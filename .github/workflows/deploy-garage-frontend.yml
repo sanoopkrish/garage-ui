@@ -1,0 +1,72 @@
+name: Deploy Garage Frontend
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Create production env
+      run: |
+        cat > .env.production <<EOF
+        VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}
+        VITE_MOCK_AUTH=false
+        EOF
+        sed -i 's/^[[:space:]]*//' .env.production
+        echo "✅ .env.production created"
+
+    - name: Build application
+      run: npm run build
+
+    - name: Upload frontend files
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "dist/*"
+        target: "/tmp/deploy-garage-frontend"
+        strip_components: 1
+
+    - name: Deploy frontend
+      uses: appleboy/ssh-action@v1.0.0
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          # Backup current deployment
+          sudo rm -rf /var/www/garage-frontend-backup
+          sudo cp -r /var/www/garage-frontend /var/www/garage-frontend-backup 2>/dev/null || true
+
+          # Deploy new version
+          sudo mkdir -p /var/www/garage-frontend
+          sudo rm -rf /var/www/garage-frontend/*
+          sudo cp -r /tmp/deploy-garage-frontend/* /var/www/garage-frontend/
+
+          # Fix permissions
+          sudo chown -R www-data:www-data /var/www/garage-frontend
+          sudo chmod -R 755 /var/www/garage-frontend
+
+          # Reload Nginx
+          sudo systemctl reload nginx
+
+          # Cleanup
+          rm -rf /tmp/deploy-garage-frontend
+
+          echo "✅ Garage Frontend deployed successfully!"

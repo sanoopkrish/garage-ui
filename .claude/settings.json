@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls /Users/beksyannaprasad/Documents/Work/)",
+      "Read(//Users/beksyannaprasad/Documents/Work/**)",
+      "Bash(mkdir -p /Users/beksyannaprasad/Documents/Work/garage-api/src/config)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('scripts',{}\\), indent=2\\)\\)\")",
+      "Bash(npm run *)"
+    ],
+    "additionalDirectories": [
+      "/Users/beksyannaprasad/Documents/Work/garage-api/src",
+      "/Users/beksyannaprasad/Documents/Work/garage-api/src/database",
+      "/Users/beksyannaprasad/Documents/Work/garage-api"
+    ]
+  }
+}

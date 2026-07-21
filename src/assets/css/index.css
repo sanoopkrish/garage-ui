@@ -1,0 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-slate-200;
+  }
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
+  }
+  .dark body {
+    @apply bg-dark-bg text-slate-100;
+  }
+}
+
+@layer components {
+  /* Scrollbar */
+  ::-webkit-scrollbar { @apply w-1.5 h-1.5; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+
+  /* Card */
+  .card {
+    @apply bg-white rounded-xl shadow-card border border-slate-100 p-6;
+  }
+  .dark .card {
+    @apply bg-dark-surface border-dark-border;
+  }
+
+  /* Status badges */
+  .badge {
+    @apply inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-open      { @apply bg-blue-100 text-blue-700; }
+  .badge-progress  { @apply bg-amber-100 text-amber-700; }
+  .badge-done      { @apply bg-green-100 text-green-700; }
+  .badge-cancelled { @apply bg-red-100 text-red-700; }
+  .badge-pending   { @apply bg-slate-100 text-slate-600; }
+}
+
+/* Toast overrides */
+.Vue-Toastification__container { font-family: 'Inter', sans-serif !important; }

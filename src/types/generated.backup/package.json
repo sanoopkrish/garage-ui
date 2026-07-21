@@ -1,0 +1,11 @@
+{
+  "name": "@cms-api/types",
+  "version": "1.0.0",
+  "description": "Auto-generated TypeScript types and enums from CMS API",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "scripts": {
+    "regenerate": "ts-node ../scripts/generate-types.ts"
+  }
+}
