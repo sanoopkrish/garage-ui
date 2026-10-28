@@ -26,7 +26,7 @@ This document proposes a purpose-built Workshop Management System (WMS) that cov
 | Staff | 3 remote field technicians, 2 workshop technicians, 1 receptionist, management team |
 | Diagnostic equipment | Autel MaxiSys MS909 |
 | Current tools to replace | ConnectTeam (field management) |
-| Current tools to integrate | Xero, Worldpay, RAM Tracking, PartsLink |
+| Current tools to integrate | Xero, RAM Tracking, PartsLink |
 
 ---
 
@@ -64,8 +64,9 @@ A central register for all customers and vehicles, searchable and linked across 
 - Full service history by vehicle — every job ever carried out on a registration is accessible in one view
 - Mileage log across visits
 
-**DVLA Integration**
-- Enter a registration plate and the system automatically populates make, model, year, fuel type and current MOT expiry — no manual typing
+**DVSA Vehicle Lookup**
+- Enter a registration plate and the system automatically populates make, model, year, fuel type, colour and current MOT expiry — no manual typing (via the official DVSA MOT History service)
+- MOT history card on every vehicle: recent test results, recorded mileage and advisories — advisories are natural leads for quoting additional work
 
 ---
 
@@ -257,6 +258,11 @@ A mobile-first interface for remote technicians working on-site away from the wo
 **Job completion**
 - Field engineer marks job complete from mobile; office is notified
 
+**Installable app with push notifications**
+- The field module installs to the engineer's phone home screen like a native app (no app store required)
+- Push notifications reach the engineer even when the app is closed: job assigned, parts received (with shelf location), schedule changes
+- Per-device opt-in — each engineer enables notifications with one tap
+
 **RAM Tracking integration**
 - System pulls mileage data per field technician from RAM Tracking
 - Calculates and displays fuel cost and estimated MPG per technician per period
@@ -287,7 +293,7 @@ Generating accurate invoices from completed job data and feeding them into Xero 
 - Configurable rule: after X days uncollected, £20/day (or part thereof) automatically added to the invoice
 
 **Payment methods**
-- Card payment via Worldpay integration
+- Card payments taken on the workshop terminal and recorded against the invoice
 - Bank transfer — manually marked as paid within system
 
 **Xero integration**
@@ -317,6 +323,10 @@ Automated, timely emails to keep customers informed at every stage — reducing 
 **Templates**
 - Branded email templates for each trigger
 - Standard wording used across B2B and B2C
+
+**Send from your own mailbox**
+- Customer emails can be sent from the workshop's own email address rather than a generic system address — supports Microsoft 365, Google Workspace / SMTP, and SendGrid
+- Microsoft 365 connection uses a one-time admin approval; no passwords are stored in the system
 
 **Follow-up reminders**
 - If no quote response after configurable number of days, system prompts receptionist to follow up (email or call)
@@ -377,7 +387,7 @@ A live management view across all operational and financial metrics, replacing s
 
 ### Module 13 — Roles & Permissions
 
-Controlled access ensuring each staff member sees exactly what they need — nothing more.
+Controlled access ensuring each staff member sees exactly what they need — nothing more. Permissions are enforced on the server for every operation — not just hidden in the interface — so access rules hold even against direct API use.
 
 | Role | Access |
 |---|---|
@@ -390,17 +400,42 @@ Controlled access ensuring each staff member sees exactly what they need — not
 
 ---
 
-## 5. Integrations
+### Module 14 — AI Assistance
+
+Built-in AI features that cut manual typing and speed up quoting — always as a draft for staff to review and accept, never acting on its own. Each feature can be switched on or off individually, and every AI action is logged.
+
+**Diagnostic report reading**
+- When an Autel diagnostic PDF is uploaded, the AI reads it: registration, test date, vehicle and every fault code — with plain-English descriptions
+- Writes a technical summary to the job's internal notes and a customer-friendly explanation ready to use when quoting
+- Works with any report layout — no dependence on a fixed template
+
+**Quote suggestions**
+- One click in the quote builder proposes the labour and parts lines for the job, priced from the workshop's *own* past approved quotes for similar work
+- Parts without a price history are still listed (with quantities) for the workshop to price — the AI never invents prices
+- Suggestions land as normal editable draft lines under the usual rate and markup rules
+
+**Damage notes from photos**
+- At check-in, the AI examines the arrival photos and drafts the bodywork-damage notes in standard panel notation (OSF/NSF etc.)
+- Consistent, written intake evidence on every job — particularly valuable for the insurance-led workload
+- Factual by design: describes only what is visible, never invents damage
+
+**Writing assistance**
+- "Improve with AI" on customer-facing notes and email templates: rewrite professionally, translate technician shorthand into plain English, or shorten — facts, figures and prices always preserved
+
+**Control and transparency**
+- Every feature has its own on/off switch; nothing is sent to a customer or saved to a job without a staff member confirming it
+- Full usage log: which features were used, how often, and the running cost — reviewed from the administration area
 
 | Integration | Purpose |
 |---|---|
-| **DVLA API** | Auto-fill vehicle details (make, model, year, MOT) from registration plate |
+| **DVSA MOT History** | Auto-fill vehicle details (make, model, year, fuel, colour, MOT expiry) from registration plate; MOT test history and advisories per vehicle |
 | **Xero** | Push sales invoices and payment records; parts purchase invoice visibility |
-| **Worldpay** | Card payment capture at collection |
-| **RAM Tracking** | Pull mileage and location data per field technician for MPG and fuel cost reporting |
+| **RAM Tracking** | Pull mileage and location data per field technician for MPG and fuel cost reporting; live field map on the schedule |
 | **PartsLink** | Parts lookup by registration or VIN; pricing to populate quote lines |
 | **Autel MaxiSys** | PDF diagnostic report auto-matched to job by registration and date |
 | **Google Reviews** | Post-completion review link included in customer email |
+| **AI (Anthropic Claude)** | Powers the Module 14 assistance features — document reading, quote suggestions, photo analysis, writing help |
+| **Microsoft 365 / SMTP / SendGrid** | Customer emails sent from the workshop's own mailbox |
 
 ---
 
@@ -415,7 +450,7 @@ Customer & vehicle register, job management, vehicle check-in, quoting and appro
 Field engineer mobile module, RAM Tracking integration, Autel PDF auto-match, ADAS compliance certificate auto-generation, parts and procurement module.
 
 ### Phase 3 — Intelligence & Optimisation
-Full reporting and analytics dashboard, customisable management views, B2B customer profitability, staff utilisation reporting, Google Reviews integration, PartsLink integration, DVLA API, Worldpay integration.
+Full reporting and analytics dashboard, customisable management views, B2B customer profitability, staff utilisation reporting, Google Reviews integration, PartsLink integration, DVSA vehicle lookup, **AI assistance features (Module 14)**.
 
 ---
 
@@ -423,7 +458,7 @@ Full reporting and analytics dashboard, customisable management views, B2B custo
 
 1. Client review and sign-off on this proposed scope
 2. Clarification of any outstanding items (invoice template, certificate template, sample documents)
-3. Technical discovery — confirm API access for DVLA, Xero, Worldpay, RAM Tracking
+3. Technical discovery — confirm API access for RAM Tracking and PartsLink (Xero and DVSA MOT History access already confirmed)
 4. Detailed specification and wireframes per module
 5. Commercial proposal and project timeline
 

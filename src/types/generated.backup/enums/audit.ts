@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/audit.enum.ts
-// Generated at: 2026-07-20T11:43:10.991Z
+// Generated at: 2026-10-05T12:06:00.406Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum AuditAction {
@@ -77,6 +77,7 @@ export enum AuditCategory {
   PAYMENT = 'PAYMENT',
   FINANCIAL = 'FINANCIAL',
   STAFF_RECORD = 'STAFF_RECORD',
+  HR = 'HR',
   GDPR_CONSENT = 'GDPR_CONSENT',
   GDPR_DATA_BREACH = 'GDPR_DATA_BREACH',
   GDPR_SAR = 'GDPR_SAR',
@@ -100,6 +101,7 @@ export const AuditCategoryLabels: Record<AuditCategory, string> = {
   [AuditCategory.PAYMENT]: 'PAYMENT',
   [AuditCategory.FINANCIAL]: 'FINANCIAL',
   [AuditCategory.STAFF_RECORD]: 'STAFF_RECORD',
+  [AuditCategory.HR]: 'HR',
   [AuditCategory.GDPR_CONSENT]: 'GDPR_CONSENT',
   [AuditCategory.GDPR_DATA_BREACH]: 'GDPR_DATA_BREACH',
   [AuditCategory.GDPR_SAR]: 'GDPR_SAR',

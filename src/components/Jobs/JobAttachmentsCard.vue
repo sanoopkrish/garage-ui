@@ -6,10 +6,13 @@ import {
   type Attachment,
 } from '@/api/files.api'
 import { AttachmentCategory } from '@/types/generated/enums/attachment'
+import { useCrudPermissions } from '@/composables/usePermissions'
 import { ToastService } from '@/services/toast.service'
 import { showConfirmDialog } from '@/utils/alert'
 
 const props = defineProps<{ jobId: string }>()
+
+const { canUpdate } = useCrudPermissions('workshop', 'jobs')
 
 const attachments = ref<Attachment[]>([])
 const photoUrls = ref<Record<string, string>>({})
@@ -23,6 +26,12 @@ const photoCategoryOptions = [
   { value: AttachmentCategory.CHECKIN_PHOTO, label: 'Check-in' },
   { value: AttachmentCategory.WIP_PHOTO, label: 'Work in progress' },
   { value: AttachmentCategory.COMPLETION_PHOTO, label: 'Completion' },
+]
+
+const docCategory = ref<AttachmentCategory>(AttachmentCategory.DOCUMENT)
+const docCategoryOptions = [
+  { value: AttachmentCategory.DOCUMENT, label: 'Document' },
+  { value: AttachmentCategory.SUPPLIER_INVOICE, label: 'Supplier invoice' },
 ]
 
 const categoryLabels: Record<string, string> = {
@@ -120,37 +129,49 @@ watch(() => props.jobId, load)
 
 <template>
   <div class="card">
-    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-      <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+    <div class="mb-3">
+      <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2 mb-2">
         <Paperclip class="w-4 h-4 text-brand-500" /> Photos &amp; Files
       </h2>
-      <div class="flex items-center gap-2">
-        <select
-          v-model="photoCategory"
-          class="rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-2 py-1.5 text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
-          title="Category for the next photo upload"
-        >
-          <option v-for="opt in photoCategoryOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-        </select>
-        <label
-          :class="[
-            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium cursor-pointer transition-colors',
-            uploading ? 'opacity-60 pointer-events-none' : '',
-          ]"
-        >
-          <Camera class="w-3.5 h-3.5" /> Add photo
-          <input ref="photoInput" type="file" accept="image/*" class="hidden" @change="onFilePicked($event, photoCategory)" />
-        </label>
-        <label
-          :class="[
-            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 hover:border-brand-400 hover:text-brand-500 text-xs font-medium cursor-pointer transition-colors',
-            uploading ? 'opacity-60 pointer-events-none' : '',
-          ]"
-        >
-          <Loader2 v-if="uploading" class="w-3.5 h-3.5 animate-spin" />
-          <FileUp v-else class="w-3.5 h-3.5" /> Upload file
-          <input ref="docInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" class="hidden" @change="onFilePicked($event, 'document')" />
-        </label>
+      <!-- the job page's left column is narrow: one row per action, category select + button, nothing wraps mid-label -->
+      <div v-if="canUpdate" class="flex flex-col gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <select
+            v-model="photoCategory"
+            class="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-2 py-1.5 text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            title="Category for the next photo upload"
+          >
+            <option v-for="opt in photoCategoryOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <label
+            :class="[
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium cursor-pointer transition-colors whitespace-nowrap flex-shrink-0',
+              uploading ? 'opacity-60 pointer-events-none' : '',
+            ]"
+          >
+            <Camera class="w-3.5 h-3.5" /> Add photo
+            <input ref="photoInput" type="file" accept="image/*" class="hidden" @change="onFilePicked($event, photoCategory)" />
+          </label>
+        </div>
+        <div class="flex items-center gap-2 min-w-0">
+          <select
+            v-model="docCategory"
+            class="flex-1 min-w-0 rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-2 py-1.5 text-xs text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-400"
+            title="Category for the next file upload"
+          >
+            <option v-for="opt in docCategoryOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+          </select>
+          <label
+            :class="[
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-dark-border text-slate-600 dark:text-slate-300 hover:border-brand-400 hover:text-brand-500 text-xs font-medium cursor-pointer transition-colors whitespace-nowrap flex-shrink-0',
+              uploading ? 'opacity-60 pointer-events-none' : '',
+            ]"
+          >
+            <Loader2 v-if="uploading" class="w-3.5 h-3.5 animate-spin" />
+            <FileUp v-else class="w-3.5 h-3.5" /> Upload file
+            <input ref="docInput" type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,image/*" class="hidden" @change="onFilePicked($event, docCategory)" />
+          </label>
+        </div>
       </div>
     </div>
 
@@ -167,6 +188,7 @@ watch(() => props.jobId, load)
             {{ categoryLabels[p.category] ?? p.category }}
           </span>
           <button
+            v-if="canUpdate"
             type="button"
             :disabled="deletingId === p.id"
             @click.stop.prevent="remove(p)"
@@ -198,6 +220,7 @@ watch(() => props.jobId, load)
             <ExternalLink class="w-3.5 h-3.5" />
           </button>
           <button
+            v-if="canUpdate"
             class="p-1 text-slate-400 hover:text-red-500 flex-shrink-0"
             :disabled="deletingId === doc.id"
             title="Delete"

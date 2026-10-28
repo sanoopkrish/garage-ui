@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppSidebar from './Sidebar/AppSidebar.vue'
 import AppHeader from './Header/AppHeader.vue'
+import HelpDrawer from '@/components/Help/HelpDrawer.vue'
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 
@@ -25,5 +26,8 @@ const pageTitle = computed(() => String(route.meta.title || 'Dashboard'))
         </div>
       </main>
     </div>
+
+    <!-- Sprint 25 — contextual help opened from the header "?" -->
+    <HelpDrawer />
   </div>
 </template>

@@ -1,6 +1,6 @@
 // Auto-generated from backend constants
 // Source: src/shared/constants/module-configuration.ts
-// Generated at: 2026-07-20T11:43:10.991Z
+// Generated at: 2026-10-05T12:06:00.407Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 
@@ -14,6 +14,8 @@ export const CONFIGURABLE_MODULE_KEYS = [
   'team',
   'stock',
   'finance',
+  'hr',
+  'assets',
 ] as const;
 
 export type ModuleKey = typeof CONFIGURABLE_MODULE_KEYS[number];
@@ -27,7 +29,9 @@ export const MODULE_SUBMODULES: Record<ModuleKey, readonly string[]> = {
   crm:       ['customers', 'vehicles'],
   team:      ['technicians'],
   stock:     ['inventory'],
-  finance:   ['invoices'],
+  finance:   ['invoices', 'statements', 'supplierInvoices', 'creditNotes', 'procurement', 'suppliers'],
+  hr:        ['attendance', 'timesheets'],
+  assets:    ['register'],
 };
 
 /**
@@ -102,6 +106,8 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   team:           { label: 'Team',         description: 'Technician management' },
   stock:          { label: 'Stock',        description: 'Inventory and parts' },
   finance:        { label: 'Finance',      description: 'Invoices and payments' },
+  hr:             { label: 'HR',           description: 'Clocking in and timesheets' },
+  assets:         { label: 'Assets',       description: 'Equipment register and where it is' },
   administration: { label: 'Administration', description: 'System administration and settings' },
 
   // ==================== SUBMODULES ====================
@@ -112,6 +118,14 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   technicians: { label: 'Technicians', description: 'Technician profiles' },
   inventory:   { label: 'Inventory',   description: 'Parts and stock management' },
   invoices:    { label: 'Invoices',    description: 'Invoice management' },
+  statements:  { label: 'Statements',  description: 'B2B statements of account' },
+  supplierInvoices: { label: 'Supplier Invoices', description: 'Supplier purchase invoices for accountant review' },
+  attendance:  { label: 'Attendance',  description: 'Clock-in / clock-out records and corrections' },
+  timesheets:  { label: 'Timesheets',  description: 'Weekly timesheets, approval and payroll export' },
+  creditNotes: { label: 'Credit Notes', description: 'Credit notes, allocations and the trade credit switch' },
+  register:    { label: 'Asset register', description: 'Diagnostic kit, equipment and tool kits — location, calibration, value' },
+  procurement: { label: 'Purchasing',   description: 'Purchase orders, deliveries and supplier invoices' },
+  suppliers:   { label: 'Suppliers',    description: 'Supplier records, terms and bank details' },
 
   // Administration submodules
   users:        { label: 'Users',         description: 'User account management' },
@@ -124,6 +138,7 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   jobTitles:         { label: 'Job Titles',         description: 'Job title management' },
   employmentTypes:   { label: 'Employment Types',   description: 'Employment type management' },
   employeeRoles:     { label: 'Employee Roles',     description: 'Employee role management' },
+  skills:            { label: 'Skills',             description: 'Technician skill management' },
   auditLogs:     { label: 'Audit Logs',    description: 'System audit trail' },
   settings:      { label: 'Settings',      description: 'System settings' },
 
@@ -133,6 +148,7 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   notifications: { label: 'Notifications',  description: 'Notification channels and preferences' },
   security:      { label: 'Security',       description: 'Security and access settings' },
   appearance:    { label: 'Appearance',     description: 'Theme and display preferences' },
+  integrations:  { label: 'Integrations',   description: 'Xero accounting feed and RAM vehicle tracking' },
 
   // ==================== ACTIONS ====================
   create: { label: 'Create', description: 'Permission to create new records' },
@@ -147,6 +163,20 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   // Invoice-specific actions
   send:     { label: 'Send Invoice',   description: 'Send invoice to customer' },
   markPaid: { label: 'Mark as Paid',   description: 'Mark an invoice as paid' },
+
+  // Timesheet actions
+  approve:  { label: 'Approve / Reject', description: 'Approve or reject timesheets, enter leave and sick hours' },
+  reopen:   { label: 'Reopen',           description: 'Reopen an approved (locked) timesheet for correction' },
+
+  // Credit note actions
+  issue:    { label: 'Issue / Allocate / Void', description: 'Issue credit notes, allocate them to invoices, void unallocated ones' },
+
+  // Purchasing actions
+  createOrder:  { label: 'Raise Orders',      description: 'Create, edit, send and cancel purchase orders' },
+  approveOrder: { label: 'Approve Orders',    description: 'Approve or reject purchase orders over the approval limit' },
+  receive:      { label: 'Book In Deliveries', description: 'Record goods received against an order' },
+  manageBills:  { label: 'Supplier Invoices', description: 'Enter, upload, match, approve and dispute supplier invoices' },
+  payBills:     { label: 'Record Payments',   description: 'Record payments made to suppliers' },
 
   // Inventory-specific actions
   adjustStock: { label: 'Adjust Stock', description: 'Adjust stock levels' },

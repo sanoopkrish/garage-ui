@@ -38,7 +38,7 @@ const submit = async () => {
         <div class="w-16 h-16 bg-brand-500 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 mb-4">
           <Gauge class="w-9 h-9 text-white" />
         </div>
-        <h1 class="text-white font-bold text-2xl tracking-tight">GarageOS <span class="text-brand-400">Field</span></h1>
+        <h1 class="text-white font-bold text-2xl tracking-tight">Cruise <span class="text-brand-400">Field</span></h1>
         <p class="text-slate-400 text-sm mt-1">Field engineer sign in</p>
       </div>
 

@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/user-role.enum.ts
-// Generated at: 2026-07-21T10:29:19.787Z
+// Generated at: 2026-10-07T14:34:31.128Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum UserRole {

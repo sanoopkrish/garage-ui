@@ -11,6 +11,9 @@ import {
 } from '@/api/ram-tracking.api'
 import { getUsers, type User } from '@/api/users.api'
 import { ToastService } from '@/services/toast.service'
+import { usePermissions } from '@/composables/usePermissions'
+
+const { hasPermission: canManage } = usePermissions('menus.administration.settings.integrations.update')
 
 const status = ref<RamStatus | null>(null)
 const config = ref<RamConfig | null>(null)
@@ -177,7 +180,7 @@ onMounted(load)
         <UiInput v-model="credForm.username" label="API username" placeholder="api-user" />
         <UiInput v-model="credForm.password" label="API password" type="password" placeholder="••••••" />
       </div>
-      <div class="mt-4">
+      <div v-if="canManage" class="mt-4">
         <UiButton :disabled="saving || !(credForm.clientId || credForm.clientSecret || credForm.username || credForm.password)" @click="saveCredentials">
           Save & test connection
         </UiButton>
@@ -188,7 +191,7 @@ onMounted(load)
     <div class="card">
       <div class="flex items-center justify-between mb-4">
         <h4 class="font-medium text-slate-800 dark:text-white">Fuel & vehicle mapping</h4>
-        <UiButton variant="secondary" :disabled="pulling" @click="runPull">
+        <UiButton v-if="canManage" variant="secondary" :disabled="pulling" @click="runPull">
           <Download class="w-4 h-4" /> {{ pulling ? 'Pulling…' : 'Pull last week now' }}
         </UiButton>
       </div>
@@ -208,7 +211,7 @@ onMounted(load)
                 <th class="py-2 pr-4">Registration</th>
                 <th class="py-2 pr-4">Vehicle</th>
                 <th class="py-2 pr-4">RAM driver</th>
-                <th class="py-2">GarageOS engineer</th>
+                <th class="py-2">Cruise engineer</th>
               </tr>
             </thead>
             <tbody>
@@ -226,7 +229,7 @@ onMounted(load)
       </template>
       <p v-else class="text-sm text-slate-400">No vehicles available — save valid credentials first.</p>
 
-      <div class="mt-4">
+      <div v-if="canManage" class="mt-4">
         <UiButton :disabled="saving" @click="saveFuelAndMapping">{{ saving ? 'Saving…' : 'Save settings' }}</UiButton>
       </div>
     </div>

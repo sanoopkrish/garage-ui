@@ -25,7 +25,20 @@ const routes = [
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/views/Dashboard/DashboardView.vue'),
-    meta: { title: 'Dashboard', requiresAuth: true },
+    meta: { title: 'Dashboard', requiresAuth: true, permissionKey: 'menus.dashboard.read' },
+  },
+  {
+    // Self-service — every authenticated user can view/edit their own profile
+    path: '/profile',
+    name: 'profile',
+    component: () => import('@/views/Profile/ProfileView.vue'),
+    meta: { title: 'My Profile', requiresAuth: true },
+  },
+  {
+    path: '/notifications',
+    name: 'notifications',
+    component: () => import('@/views/Notifications/NotificationsView.vue'),
+    meta: { title: 'Notifications', requiresAuth: true },
   },
 
   // Field engineer (Module 8) — mobile-first views, own layout
@@ -46,6 +59,60 @@ const routes = [
     name: 'field-job-detail',
     component: () => import('@/views/Field/FieldJobDetailView.vue'),
     meta: { title: 'Job', requiresAuth: true, permissionKey: 'menus.workshop.jobs.read' },
+  },
+  {
+    path: '/field/kit',
+    name: 'field-kit',
+    component: () => import('@/views/Field/FieldFindKitView.vue'),
+    meta: { title: 'Find kit', requiresAuth: true, permissionKey: 'menus.assets.register.read' },
+  },
+  {
+    path: '/field/timesheet',
+    name: 'field-timesheet',
+    component: () => import('@/views/Field/FieldTimesheetView.vue'),
+    meta: { title: 'My Week', requiresAuth: true },
+  },
+
+  // Wall-tablet clocking — public: the tablet is never logged in; the API checks the tenant's kiosk switch
+  {
+    path: '/kiosk',
+    name: 'kiosk',
+    component: () => import('@/views/Kiosk/KioskClockView.vue'),
+    meta: { title: 'Clock in / out', requiresAuth: false },
+  },
+
+  // HR — clocking in & timesheets (Sprint 18)
+  {
+    path: '/hr/my-week',
+    name: 'hr-my-week',
+    component: () => import('@/views/Hr/MyWeekView.vue'),
+    meta: { title: 'My Week', requiresAuth: true },
+  },
+  {
+    path: '/hr/attendance',
+    name: 'hr-attendance',
+    component: () => import('@/views/Hr/AttendanceView.vue'),
+    meta: { title: 'Attendance', requiresAuth: true, permissionKey: 'menus.hr.attendance.read' },
+  },
+  {
+    path: '/hr/timesheets',
+    name: 'hr-timesheets',
+    component: () => import('@/views/Hr/TimesheetListView.vue'),
+    meta: { title: 'Timesheets', requiresAuth: true, permissionKey: 'menus.hr.timesheets.read' },
+  },
+  {
+    path: '/hr/timesheets/:id',
+    name: 'hr-timesheet-detail',
+    component: () => import('@/views/Hr/TimesheetDetailView.vue'),
+    meta: { title: 'Timesheet', requiresAuth: true, permissionKey: 'menus.hr.timesheets.read' },
+  },
+
+  // Asset register (Sprint 21)
+  {
+    path: '/assets',
+    name: 'assets',
+    component: () => import('@/views/Assets/AssetListView.vue'),
+    meta: { title: 'Asset register', requiresAuth: true, permissionKey: 'menus.assets.register.read' },
   },
 
   // Jobs / Work Orders
@@ -117,7 +184,7 @@ const routes = [
     path: '/inventory',
     name: 'inventory',
     component: () => import('@/views/Inventory/InventoryListView.vue'),
-    meta: { title: 'Inventory', requiresAuth: true, permissionKey: 'menus.stock.inventory.read' },
+    meta: { title: 'Job Parts', requiresAuth: true, permissionKey: 'menus.stock.inventory.read' },
   },
 
   // Invoices
@@ -132,6 +199,50 @@ const routes = [
     name: 'invoice-detail',
     component: () => import('@/views/Invoices/InvoiceDetailView.vue'),
     meta: { title: 'Invoice Detail', requiresAuth: true, permissionKey: 'menus.finance.invoices.read' },
+  },
+
+  // Purchasing (Sprint 23)
+  {
+    path: '/procurement/orders',
+    name: 'procurement-orders',
+    component: () => import('@/views/Procurement/PurchaseOrderListView.vue'),
+    meta: { title: 'Orders', requiresAuth: true, permissionKey: 'menus.finance.procurement.read' },
+  },
+  {
+    path: '/procurement/orders/new',
+    name: 'procurement-order-new',
+    component: () => import('@/views/Procurement/PurchaseOrderFormView.vue'),
+    meta: { title: 'New Purchase Order', requiresAuth: true, permissionKey: 'menus.finance.procurement.createOrder' },
+  },
+  {
+    path: '/procurement/orders/:id/edit',
+    name: 'procurement-order-edit',
+    component: () => import('@/views/Procurement/PurchaseOrderFormView.vue'),
+    meta: { title: 'Edit Purchase Order', requiresAuth: true, permissionKey: 'menus.finance.procurement.createOrder' },
+  },
+  {
+    path: '/procurement/bills',
+    name: 'procurement-bills',
+    component: () => import('@/views/Procurement/BillListView.vue'),
+    meta: { title: 'Supplier Invoices', requiresAuth: true, permissionKey: 'menus.finance.procurement.read' },
+  },
+  {
+    path: '/procurement/stock',
+    name: 'procurement-stock',
+    component: () => import('@/views/Procurement/StockListView.vue'),
+    meta: { title: 'Stock', requiresAuth: true, permissionKey: 'menus.finance.procurement.read' },
+  },
+  {
+    path: '/procurement/reports',
+    name: 'procurement-reports',
+    component: () => import('@/views/Procurement/ProcurementReportsView.vue'),
+    meta: { title: 'Purchasing Reports', requiresAuth: true, permissionKey: 'menus.finance.procurement.read' },
+  },
+  {
+    path: '/procurement/suppliers',
+    name: 'procurement-suppliers',
+    component: () => import('@/views/Procurement/SupplierListView.vue'),
+    meta: { title: 'Suppliers', requiresAuth: true, permissionKey: 'menus.finance.suppliers.read' },
   },
 
   // Companies — owner/platform domain only
@@ -213,6 +324,13 @@ const routes = [
   },
 
   // Tenant access denied
+  // Sprint 25 — in-app help centre (any signed-in user; pages are filtered by the API)
+  {
+    path: '/help/:slug?',
+    name: 'help',
+    component: () => import('@/views/Help/HelpCentreView.vue'),
+    meta: { title: 'Help Centre', requiresAuth: true },
+  },
   {
     path: '/tenant-access-denied',
     name: 'tenant-access-denied',
@@ -234,7 +352,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  document.title = `${to.meta.title || 'Workshop'} | GarageOS`
+  document.title = `${to.meta.title || 'Workshop'} | Cruise`
 
   if (to.meta.requiresAuth === false) return true
 
@@ -261,10 +379,15 @@ router.beforeEach(async (to) => {
     }
   }
 
-  // Owner-only routes are blocked on tenant subdomains (production only — dev always passes)
-  if (to.meta.ownerOnly && !import.meta.env.DEV) {
-    const { extractUrlSubdomain } = useTenant()
-    if (extractUrlSubdomain()) {
+  // Owner-only routes need an isAdmin role (backend enforces AdminRoleGuard) and the owner
+  // domain (VITE_OWNER_SUBDOMAIN, e.g. tconsult.<base domain>) — tenant subdomains are blocked.
+  // isOwnerDomain is always true in dev.
+  if (to.meta.ownerOnly) {
+    if (authStore.userPermissions?.isAdmin !== true) {
+      return to.name === 'dashboard' ? true : { name: 'dashboard' }
+    }
+    const { isOwnerDomain } = useTenant()
+    if (!isOwnerDomain.value) {
       return { name: 'dashboard' }
     }
   }

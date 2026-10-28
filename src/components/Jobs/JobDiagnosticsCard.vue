@@ -162,13 +162,13 @@ onMounted(load)
       </ul>
       <p v-else class="text-sm text-slate-400 mb-3">No fault codes recorded.</p>
 
-      <div v-if="canUpdate" class="flex gap-2 mb-5">
+      <div v-if="canUpdate" class="flex gap-2 mb-5 min-w-0">
         <input
           v-model="newCode"
           type="text"
           maxlength="20"
-          placeholder="Code (e.g. C1095)"
-          class="w-36 text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
+          placeholder="Code"
+          class="w-24 flex-shrink-0 text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono"
           @keyup.enter="add"
         />
         <input
@@ -176,10 +176,10 @@ onMounted(load)
           type="text"
           maxlength="500"
           placeholder="Description (optional)"
-          class="flex-1 text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          class="flex-1 min-w-0 text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
           @keyup.enter="add"
         />
-        <UiButton size="sm" @click="add"><Plus class="w-4 h-4" /></UiButton>
+        <UiButton size="sm" class="flex-shrink-0" @click="add"><Plus class="w-4 h-4" /></UiButton>
       </div>
 
       <!-- Diagnostic reports -->
@@ -206,23 +206,20 @@ onMounted(load)
 
       <!-- ADAS compliance certificate -->
       <div v-if="showCertificate" class="mt-5 pt-4 border-t border-slate-100 dark:border-dark-border">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1.5 mb-1">
-              <Award class="w-3.5 h-3.5 text-brand-500" /> ADAS Compliance Certificate
-            </h4>
-            <p class="text-xs text-slate-400">
-              Generated from this job's details. Saving files it on the job and includes it with the invoice email.
-            </p>
-          </div>
-          <div class="flex items-center gap-2 flex-shrink-0">
-            <UiButton variant="secondary" size="sm" :disabled="certBusy" @click="downloadCertificate">
-              <Download class="w-3.5 h-3.5" /> Download
-            </UiButton>
-            <UiButton v-if="canUpdate" size="sm" :disabled="certBusy" @click="attachCertificate">
-              <Award class="w-3.5 h-3.5" /> Save to job records
-            </UiButton>
-          </div>
+        <!-- narrow column: text first, the buttons on their own row underneath -->
+        <h4 class="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-center gap-1.5 mb-1">
+          <Award class="w-3.5 h-3.5 text-brand-500" /> ADAS Compliance Certificate
+        </h4>
+        <p class="text-xs text-slate-400 mb-3">
+          Generated from this job's details. Saving files it on the job and includes it with the invoice email.
+        </p>
+        <div class="flex flex-wrap items-center gap-2">
+          <UiButton variant="secondary" size="sm" :disabled="certBusy" @click="downloadCertificate">
+            <Download class="w-3.5 h-3.5" /> Download
+          </UiButton>
+          <UiButton v-if="canUpdate" size="sm" :disabled="certBusy" @click="attachCertificate">
+            <Award class="w-3.5 h-3.5" /> Save to job records
+          </UiButton>
         </div>
       </div>
     </template>

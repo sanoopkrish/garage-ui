@@ -25,6 +25,9 @@ export interface PartsOrder {
   delayNotes: string | null
   rmaReference: string | null
   returnReason: string | null
+  supplierInvoiceRef: string | null
+  supplierInvoiceAmount: number | null
+  notes: string | null
   jobId: string | null
   jobNumber: string | null
   vehicleRegistration: string | null
@@ -71,6 +74,9 @@ export async function updatePartsOrder(id: string, dto: {
   expectedDate?: string
   rmaReference?: string
   returnReason?: string
+  supplierInvoiceRef?: string
+  supplierInvoiceAmount?: number
+  notes?: string
 }): Promise<PartsOrder> {
   return unwrap(await api.patch(`/parts-orders/${id}`, dto))
 }

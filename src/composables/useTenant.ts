@@ -10,6 +10,10 @@ interface Company {
 const currentTenant = ref<Company | null>(null)
 const tenantId = ref<string | null>(null)
 
+// Owner/platform company subdomain (cms convention). In production the platform is
+// served at https://<VITE_OWNER_SUBDOMAIN>.<base domain>, e.g. tconsult.cruise.a-soft.co.uk.
+const OWNER_SUBDOMAIN: string | null = import.meta.env.VITE_OWNER_SUBDOMAIN || null
+
 export function useTenant() {
   // Returns the subdomain from the URL only — no env-var fallback.
   // Used to determine if we're on the owner (platform) domain vs a tenant subdomain.
@@ -24,14 +28,23 @@ export function useTenant() {
     return null
   }
 
-  // Returns subdomain for API tenant headers — falls back to VITE_TENANT_SUBDOMAIN for local dev.
+  // Returns subdomain for API tenant headers — falls back to VITE_TENANT_SUBDOMAIN in local dev
+  // and to the owner subdomain when the URL carries none (bare base domain).
   function extractSubdomain(): string | null {
-    return extractUrlSubdomain() ?? (import.meta.env.VITE_TENANT_SUBDOMAIN || null)
+    const fromUrl = extractUrlSubdomain()
+    if (fromUrl) return fromUrl
+    if (import.meta.env.DEV && import.meta.env.VITE_TENANT_SUBDOMAIN) return import.meta.env.VITE_TENANT_SUBDOMAIN
+    return OWNER_SUBDOMAIN
   }
 
-  // True when on the owner/platform domain (no tenant subdomain in URL).
-  // In dev mode this is always true so developers can access owner-only pages regardless of subdomain.
-  const isOwnerDomain = computed(() => import.meta.env.DEV || !extractUrlSubdomain())
+  // True on the owner/platform domain: no tenant subdomain in the URL, or the URL subdomain is
+  // the configured owner subdomain. In dev mode this is always true so developers can reach
+  // owner-only pages regardless of subdomain.
+  const isOwnerDomain = computed(() => {
+    if (import.meta.env.DEV) return true
+    const fromUrl = extractUrlSubdomain()
+    return fromUrl === null || (OWNER_SUBDOMAIN !== null && fromUrl === OWNER_SUBDOMAIN)
+  })
 
   function initializeTenant() {
     const subdomain = extractSubdomain() || import.meta.env.VITE_TENANT_SUBDOMAIN || null

@@ -225,6 +225,15 @@
             </div>
           </div>
 
+          <!-- AI rewrite (draft-and-accept; preserves {{variables}} and HTML) -->
+          <div class="flex justify-end mb-2">
+            <AiRewriteButton
+              :text="editForm.emailBody"
+              context="HTML email template sent by a vehicle workshop; template variables in double curly braces must be preserved"
+              @accept="(draft) => (editForm.emailBody = draft)"
+            />
+          </div>
+
           <!-- Visual Editor -->
           <RichTextEditor
             v-if="editMode === 'visual'"
@@ -340,6 +349,7 @@ import { ArrowLeft } from 'lucide-vue-next'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import GeneralSliderPanel from '@/components/Ui/GeneralSliderPanel.vue'
 import RichTextEditor from '@/components/Ui/RichTextEditor.vue'
+import AiRewriteButton from '@/components/Ui/AiRewriteButton.vue'
 import { useNotificationTemplateStore } from '@/stores/notification-template.store'
 import { ToastService } from '@/services/toast.service'
 import type { NotificationTemplateDto } from '@/api/notification-template.api'

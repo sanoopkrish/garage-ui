@@ -49,7 +49,7 @@ const submit = async () => {
               <Gauge class="w-6 h-6 text-white" />
             </div>
             <div>
-              <p class="text-xl font-bold text-slate-800">GarageOS</p>
+              <p class="text-xl font-bold text-slate-800">Cruise</p>
               <p class="text-xs text-slate-400 -mt-0.5">Workshop Management System</p>
             </div>
           </div>
@@ -136,7 +136,7 @@ const submit = async () => {
       </div>
 
       <p class="mt-6 text-center text-xs text-slate-500">
-        &copy; {{ new Date().getFullYear() }} GarageOS. All rights reserved.
+        &copy; {{ new Date().getFullYear() }} Cruise. All rights reserved.
       </p>
     </div>
   </div>

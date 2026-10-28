@@ -7,6 +7,8 @@ defineProps<{
   error?: string
   disabled?: boolean
   required?: boolean
+  /** id of a <datalist> offering suggestions */
+  list?: string
 }>()
 defineEmits<{ 'update:modelValue': [val: string] }>()
 </script>
@@ -22,6 +24,7 @@ defineEmits<{ 'update:modelValue': [val: string] }>()
       :type="type || 'text'"
       :placeholder="placeholder"
       :disabled="disabled"
+      :list="list"
       :class="[
         'w-full rounded-lg border px-3 py-2 text-sm bg-white dark:bg-dark-surface text-slate-900 dark:text-slate-100 placeholder-slate-400 transition-colors',
         'focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent',

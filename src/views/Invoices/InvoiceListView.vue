@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { usePermissions } from '@/composables/usePermissions'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiPageHeader from '@/components/Ui/UiPageHeader.vue'
 import UiTable from '@/components/Ui/UiTable.vue'
@@ -7,11 +9,32 @@ import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiSearchInput from '@/components/Ui/UiSearchInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
 import { Eye, ChevronLeft, ChevronRight } from 'lucide-vue-next'
+import StatementsPanel from '@/components/Invoices/StatementsPanel.vue'
+import SupplierInvoicesPanel from '@/components/Invoices/SupplierInvoicesPanel.vue'
+import CreditNotesPanel from '@/components/Invoices/CreditNotesPanel.vue'
 import { getInvoices } from '@/api/invoices.api'
 import type { Invoice } from '@/api/invoices.api'
 import { InvoiceStatus, InvoicePaymentStatus } from '@/types/generated/enums/invoice'
 import { invoiceStatusLabels, paymentStatusLabels, paymentStatusVariant, gbp } from '@/utils/invoiceStatus'
 import { ToastService } from '@/services/toast.service'
+
+const { hasPermission: canSeeStatements } = usePermissions('menus.finance.statements.read')
+const { hasPermission: canSeeSupplierInvoices } = usePermissions('menus.finance.supplierInvoices.read')
+
+const { hasPermission: canSeeCreditNotes } = usePermissions('menus.finance.creditNotes.read')
+
+// /invoices?tab=credit-notes&cn=<id> deep-links to a credit note (from the invoice detail chips)
+const route = useRoute()
+const openCreditNoteId = (route.query.cn as string) || null
+const activeTab = ref<'invoices' | 'statements' | 'suppliers' | 'credit-notes'>(
+  route.query.tab === 'credit-notes' && canSeeCreditNotes.value ? 'credit-notes' : 'invoices',
+)
+const tabs = computed(() => [
+  { key: 'invoices' as const, label: 'Invoices' },
+  ...(canSeeCreditNotes.value ? [{ key: 'credit-notes' as const, label: 'Credit notes' }] : []),
+  ...(canSeeStatements.value ? [{ key: 'statements' as const, label: 'Statements' }] : []),
+  ...(canSeeSupplierInvoices.value ? [{ key: 'suppliers' as const, label: 'Supplier invoices' }] : []),
+])
 
 const invoices = ref<Invoice[]>([])
 const total = ref(0)
@@ -65,8 +88,29 @@ onMounted(() => load(1))
 
 <template>
   <DefaultLayout>
-    <UiPageHeader title="Invoices" subtitle="Sales invoices, payments and outstanding balances." />
+    <UiPageHeader title="Invoices" subtitle="Sales invoices, credit notes, payments, statements and supplier invoices." />
 
+    <div class="flex items-center gap-1 mb-5 border-b border-slate-200 dark:border-dark-border">
+      <button
+        v-for="t in tabs"
+        :key="t.key"
+        @click="activeTab = t.key"
+        :class="[
+          'px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors',
+          activeTab === t.key
+            ? 'border-brand-500 text-brand-600'
+            : 'border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300',
+        ]"
+      >
+        {{ t.label }}
+      </button>
+    </div>
+
+    <StatementsPanel v-if="activeTab === 'statements'" />
+    <SupplierInvoicesPanel v-else-if="activeTab === 'suppliers'" />
+    <CreditNotesPanel v-else-if="activeTab === 'credit-notes'" :openId="openCreditNoteId" />
+
+    <template v-else>
     <div class="flex items-center gap-3 mb-5">
       <UiSearchInput :modelValue="searchQuery" placeholder="Search invoice no, customer, job..." @update:modelValue="onSearch" />
       <div class="w-52">
@@ -115,5 +159,6 @@ onMounted(() => load(1))
       <button :disabled="page <= 1" @click="load(page - 1)" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 disabled:opacity-40"><ChevronLeft class="w-4 h-4" /></button>
       <button :disabled="page >= totalPages" @click="load(page + 1)" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 disabled:opacity-40"><ChevronRight class="w-4 h-4" /></button>
     </div>
+    </template>
   </DefaultLayout>
 </template>

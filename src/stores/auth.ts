@@ -255,6 +255,8 @@ export const useAuthStore = defineStore('auth', {
       import('@/composables/useTenant').then(m => m.useTenant().clearTenant())
       import('@/router').then(m => {
         const router = m.default
+        // The kiosk page is public and must stay put
+        if (router.currentRoute.value.name === 'kiosk') return
         // Field PWA users stay on the field login, office users on the main one
         const target = router.currentRoute.value.path.startsWith('/field') ? '/field/login' : '/auth/login'
         if (router.currentRoute.value.path !== target) router.push(target)

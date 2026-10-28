@@ -11,8 +11,27 @@ import { useRolesStore } from '@/stores/roles.store'
 import { Plus, Pencil, Copy, Trash2, Shield } from 'lucide-vue-next'
 import type { SystemRole } from '@/api/roles.api'
 import PermissionsEditor from '@/components/Roles/PermissionsEditor.vue'
+import { NotificationRecipientTag } from '@/types/generated/enums/notification'
+import { usePermissions } from '@/composables/usePermissions'
 
 const rolesStore = useRolesStore()
+const { hasPermission: canEditTags } = usePermissions('menus.administration.settings.notifications.roleNotificationTags.update')
+
+/** Which internal alerts each role receives (panic, parts delayed/received, field-job completed…) */
+const tagOptions: { value: string; label: string }[] = [
+  { value: NotificationRecipientTag.MANAGEMENT, label: 'Management' },
+  { value: NotificationRecipientTag.WORKSHOP_MANAGER, label: 'Workshop Manager' },
+  { value: NotificationRecipientTag.RECEPTIONIST, label: 'Receptionist' },
+  { value: NotificationRecipientTag.ACCOUNTS, label: 'Accounts' },
+  { value: NotificationRecipientTag.TECHNICIAN, label: 'Technician' },
+  { value: NotificationRecipientTag.FIELD_ENGINEER, label: 'Field Engineer' },
+]
+
+function toggleTag(tag: string) {
+  const i = form.value.notificationTags.indexOf(tag)
+  if (i >= 0) form.value.notificationTags.splice(i, 1)
+  else form.value.notificationTags.push(tag)
+}
 
 // ─── Modal state ────────────────────────────────────────────────────────────
 
@@ -26,6 +45,7 @@ const form = ref({
   name: '',
   description: '',
   status: 'active' as 'active' | 'inactive',
+  notificationTags: [] as string[],
 })
 
 const statusOptions = [
@@ -52,7 +72,7 @@ onMounted(() => {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function resetForm() {
-  form.value = { name: '', description: '', status: 'active' }
+  form.value = { name: '', description: '', status: 'active', notificationTags: [] }
   editingRole.value = null
 }
 
@@ -70,6 +90,7 @@ function openEditModal(role: SystemRole) {
     name: role.name,
     description: role.description ?? '',
     status: role.status,
+    notificationTags: [...(role.notificationTags ?? [])],
   }
   modalMode.value = 'edit'
   showModal.value = true
@@ -87,12 +108,14 @@ async function submitModal() {
     await rolesStore.createRole({
       name: form.value.name.trim(),
       description: form.value.description.trim() || undefined,
+      ...(canEditTags.value ? { notificationTags: form.value.notificationTags } : {}),
     })
   } else if (editingRole.value) {
     await rolesStore.updateRole(editingRole.value.id, {
       name: form.value.name.trim(),
       description: form.value.description.trim() || undefined,
       status: form.value.status,
+      ...(canEditTags.value ? { notificationTags: form.value.notificationTags } : {}),
     })
   }
 
@@ -257,6 +280,29 @@ async function confirmDelete() {
           label="Status"
           :options="statusOptions"
         />
+
+        <div v-if="canEditTags" class="flex flex-col gap-1.5">
+          <label class="text-sm font-medium text-slate-700 dark:text-slate-300">Notification tags</label>
+          <p class="text-xs text-slate-400 -mt-0.5">
+            Internal alerts (panic button, parts delayed/received, field job completed…) go to roles carrying the matching tag.
+          </p>
+          <div class="flex flex-wrap gap-1.5">
+            <button
+              v-for="opt in tagOptions"
+              :key="opt.value"
+              type="button"
+              @click="toggleTag(opt.value)"
+              :class="[
+                'px-2.5 py-1 rounded-full text-xs font-medium border transition-colors',
+                form.notificationTags.includes(opt.value)
+                  ? 'bg-brand-500 border-brand-500 text-white'
+                  : 'border-slate-200 dark:border-dark-border text-slate-500 dark:text-slate-400 hover:border-brand-400',
+              ]"
+            >
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
       </div>
 
       <template #footer>

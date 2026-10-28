@@ -18,8 +18,12 @@ clientsClaim()
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// SPA navigation fallback — API routes excluded
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api/] }))
+// SPA navigation fallback — API routes excluded. Dev has an empty precache
+// manifest, where createHandlerBoundToURL throws at SW evaluation — skip it
+// there (vite serves index.html itself; the dev SW only needs push handling).
+if (!import.meta.env.DEV) {
+  registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/^\/api/] }))
+}
 
 // API always network-first so job data stays fresh
 registerRoute(
@@ -42,7 +46,7 @@ interface PushData {
 
 self.addEventListener('push', (event) => {
   if (!event.data) return
-  let data: PushData = { title: 'GarageOS', body: '' }
+  let data: PushData = { title: 'Cruise', body: '' }
   try {
     data = { ...data, ...event.data.json() }
   } catch {

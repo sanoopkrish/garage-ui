@@ -6,6 +6,8 @@ export interface SystemRole {
   description?: string
   status: 'active' | 'inactive'
   settings?: Record<string, any>
+  /** Recipient tags — internal alerts (panic, parts, field) are dispatched to roles carrying the matching tag */
+  notificationTags?: string[]
   companyId: string
   createdAt: string
   updatedAt: string
@@ -15,6 +17,7 @@ export interface CreateRoleDto {
   name: string
   description?: string
   settings?: Record<string, any>
+  notificationTags?: string[]
 }
 
 export interface UpdateRoleDto {
@@ -22,6 +25,7 @@ export interface UpdateRoleDto {
   description?: string
   status?: 'active' | 'inactive'
   settings?: Record<string, any>
+  notificationTags?: string[]
 }
 
 export async function getRoles(): Promise<SystemRole[]> {

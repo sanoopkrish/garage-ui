@@ -9,6 +9,7 @@ import { getUser } from '@/api/users.api'
 import type { User } from '@/api/users.api'
 import { getJobs, getTechnicianStats } from '@/api/jobs.api'
 import TechnicianMileageCard from '@/components/Technicians/TechnicianMileageCard.vue'
+import TechnicianAttendanceCard from '@/components/Technicians/TechnicianAttendanceCard.vue'
 import { updateUser } from '@/api/users.api'
 import { ToastService } from '@/services/toast.service'
 import type { Job, TechnicianStats } from '@/api/jobs.api'
@@ -156,6 +157,9 @@ onMounted(async () => {
 
         <!-- Van mileage (RAM Tracking, Module 8) -->
         <TechnicianMileageCard :technicianId="(route.params.id as string)" />
+
+        <!-- Attendance vs job hours (Sprint 18) -->
+        <TechnicianAttendanceCard :technicianId="(route.params.id as string)" />
       </div>
 
       <!-- Right: job history -->

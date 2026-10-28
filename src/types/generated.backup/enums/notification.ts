@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/notification.enum.ts
-// Generated at: 2026-07-20T11:43:10.990Z
+// Generated at: 2026-10-05T12:06:00.404Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum NotificationRecipientTag {

@@ -15,11 +15,15 @@ import {
   type PartsOrder,
 } from '@/api/parts-orders.api'
 import { PartsOrderStatus } from '@/types/generated/enums/job'
-import { useCrudPermissions } from '@/composables/usePermissions'
+import { useCrudPermissions, usePermissions } from '@/composables/usePermissions'
 import { ToastService } from '@/services/toast.service'
+import { getSuppliersBasic } from '@/api/procurement/suppliers.api'
+import { useProcurementStore } from '@/stores/procurement.store'
+import { useRouter } from 'vue-router'
 import { showConfirmDialog, showTextareaDialog } from '@/utils/alert'
 
 const { canCreate, canUpdate, canDelete } = useCrudPermissions('stock', 'inventory')
+const { hasPermission: canAdjustStock } = usePermissions('menus.stock.inventory.adjustStock')
 
 const activeTab = ref<'orders' | 'stock'>('orders')
 const loading = ref(true)
@@ -105,7 +109,10 @@ const stockRows = computed(() => {
 // ── Detail slider ─────────────────────────────────────────────────────────────
 const selected = ref<PartsOrder | null>(null)
 const detailOpen = ref(false)
-const editForm = reactive({ supplierName: '', supplierRef: '', expectedDate: '' })
+const editForm = reactive({
+  supplierName: '', supplierRef: '', expectedDate: '',
+  supplierInvoiceRef: '', supplierInvoiceAmount: '', notes: '',
+})
 const savingDetail = ref(false)
 
 function openDetail(order: PartsOrder) {
@@ -113,6 +120,9 @@ function openDetail(order: PartsOrder) {
   editForm.supplierName = order.supplierName
   editForm.supplierRef = order.supplierRef ?? ''
   editForm.expectedDate = order.expectedDate ?? ''
+  editForm.supplierInvoiceRef = order.supplierInvoiceRef ?? ''
+  editForm.supplierInvoiceAmount = order.supplierInvoiceAmount != null ? String(order.supplierInvoiceAmount) : ''
+  editForm.notes = order.notes ?? ''
   detailOpen.value = true
 }
 
@@ -130,6 +140,9 @@ async function saveDetail() {
       supplierName: editForm.supplierName.trim() || undefined,
       supplierRef: editForm.supplierRef.trim() || undefined,
       expectedDate: editForm.expectedDate || undefined,
+      supplierInvoiceRef: editForm.supplierInvoiceRef.trim() || undefined,
+      supplierInvoiceAmount: editForm.supplierInvoiceAmount !== '' ? Number(editForm.supplierInvoiceAmount) : undefined,
+      notes: editForm.notes.trim() || undefined,
     }))
     ToastService.success('Order updated')
   } catch (e: any) {
@@ -183,6 +196,13 @@ async function removeOrder() {
 }
 
 // ── Manual order modal ────────────────────────────────────────────────────────
+// Where Purchasing is in use, anything NOT for a job is raised as a purchase order there; this screen is
+// for job parts only. The manual order stays for tenants that have not switched Purchasing on.
+const router = useRouter()
+const procurement = useProcurementStore()
+const { hasPermission: canSeePurchasing } = usePermissions('menus.finance.procurement.read')
+const { hasPermission: canRaisePurchaseOrder } = usePermissions('menus.finance.procurement.createOrder')
+const purchasingInUse = computed(() => canSeePurchasing.value && procurement.settings?.enabled === true)
 const createOpen = ref(false)
 const createSubmitting = ref(false)
 const createForm = reactive({
@@ -240,14 +260,21 @@ function isOverdue(order: PartsOrder): boolean {
     && new Date(order.expectedDate) < new Date(new Date().toDateString())
 }
 
-onMounted(load)
+// Sprint 23 — suggest existing supplier records so the same supplier is not typed two ways
+const supplierNames = ref<string[]>([])
+onMounted(() => {
+  load()
+  if (canSeePurchasing.value) procurement.fetchSettings()
+  getSuppliersBasic().then((list) => { supplierNames.value = list.map((s) => s.name) }).catch(() => {})
+})
 </script>
 
 <template>
   <DefaultLayout>
-    <UiPageHeader title="Parts & Stock" subtitle="Purchase orders, receiving and shelf locations.">
-      <UiButton v-if="canUpdate" variant="secondary" @click="scannerOpen = true"><ScanBarcode class="w-4 h-4" /> Receive by Scan</UiButton>
-      <UiButton v-if="canCreate" @click="createOpen = true"><Plus class="w-4 h-4" /> New Order</UiButton>
+    <UiPageHeader title="Job Parts" :subtitle="purchasingInUse ? 'Parts ordered for jobs — receiving, shelf locations and returns. Order from the quote on the job; anything else is a purchase order.' : 'Parts orders, receiving and shelf locations.'">
+      <UiButton v-if="canAdjustStock" variant="secondary" @click="scannerOpen = true"><ScanBarcode class="w-4 h-4" /> Receive by Scan</UiButton>
+      <UiButton v-if="canCreate && !purchasingInUse" @click="createOpen = true"><Plus class="w-4 h-4" /> New Order</UiButton>
+      <UiButton v-else-if="purchasingInUse && canRaisePurchaseOrder" variant="secondary" @click="router.push('/procurement/orders/new')"><Plus class="w-4 h-4" /> New purchase order</UiButton>
     </UiPageHeader>
 
     <!-- Tabs -->
@@ -384,9 +411,22 @@ onMounted(load)
 
         <!-- Supplier / ETA -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <UiInput v-model="editForm.supplierName" label="Supplier" :disabled="!canUpdate" />
+          <UiInput v-model="editForm.supplierName" label="Supplier" list="supplier-names" :disabled="!canUpdate" />
           <UiInput v-model="editForm.supplierRef" label="Supplier ref" :disabled="!canUpdate" />
           <UiInput v-model="editForm.expectedDate" label="Expected date" type="date" :disabled="!canUpdate" />
+        </div>
+
+        <!-- Supplier invoice (Module 6: recharge discipline) + progress notes -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <UiInput v-model="editForm.supplierInvoiceRef" label="Supplier invoice ref" placeholder="e.g. SI-48211" :disabled="!canUpdate" />
+          <UiInput v-model="editForm.supplierInvoiceAmount" label="Invoice amount (£)" type="number" :disabled="!canUpdate" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-slate-500 mb-1">Notes (delivery condition, chase-ups…)</label>
+          <textarea
+            v-model="editForm.notes" rows="2" :disabled="!canUpdate"
+            class="w-full rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-sm text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400 disabled:opacity-60"
+          />
         </div>
         <UiButton v-if="canUpdate" size="sm" variant="secondary" :disabled="savingDetail" @click="saveDetail">{{ savingDetail ? 'Saving…' : 'Save details' }}</UiButton>
 
@@ -425,11 +465,13 @@ onMounted(load)
       </div>
     </GeneralSliderPanel>
 
+    <datalist id="supplier-names"><option v-for="name in supplierNames" :key="name" :value="name" /></datalist>
+
     <!-- Manual order modal -->
     <UiModal :open="createOpen" title="New Parts Order" @close="createOpen = false">
       <div class="space-y-4">
         <div class="grid grid-cols-2 gap-3">
-          <UiInput v-model="createForm.supplierName" label="Supplier" required />
+          <UiInput v-model="createForm.supplierName" label="Supplier" list="supplier-names" required />
           <UiInput v-model="createForm.expectedDate" label="Expected date" type="date" />
         </div>
         <div>

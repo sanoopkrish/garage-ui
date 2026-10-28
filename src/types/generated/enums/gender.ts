@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/gender.enum.ts
-// Generated at: 2026-07-21T10:29:19.789Z
+// Generated at: 2026-10-07T14:34:31.131Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum UserGender {

@@ -1,22 +1,56 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { computed, ref, watch, onMounted } from 'vue'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
-import { Building2, CreditCard, Bell, Satellite } from 'lucide-vue-next'
+import { Building2, CreditCard, Bell, Satellite, ShieldCheck, Clock, ShoppingCart, LayoutDashboard } from 'lucide-vue-next'
+import WorkingTimeSettings from '@/components/Settings/WorkingTimeSettings.vue'
+import ProcurementSettings from '@/components/Settings/ProcurementSettings.vue'
+import DashboardDefaultsSettings from '@/components/Settings/DashboardDefaultsSettings.vue'
 import { useCompanyStore } from '@/stores/company.store'
+import { usePermissions } from '@/composables/usePermissions'
 import RamTrackingSettings from '@/components/Settings/RamTrackingSettings.vue'
 import AccountingSettings from '@/components/Settings/AccountingSettings.vue'
 import { ToastService } from '@/services/toast.service'
 import type { UpdateCompanyDto, CompanySettings, NotificationSettings } from '@/api/company.api'
 
-const activeTab = ref('business')
-const tabs = [
-  { key: 'business', label: 'Business',      icon: Building2 },
-  { key: 'billing',  label: 'Billing / VAT', icon: CreditCard },
-  { key: 'notify',   label: 'Notifications', icon: Bell },
-  { key: 'integrations', label: 'Integrations', icon: Satellite },
-]
+const { hasPermission: canSeeBusiness } = usePermissions('menus.administration.settings.business.read')
+const { hasPermission: canSeeBilling } = usePermissions('menus.administration.settings.billing.read')
+const { hasPermission: canSeeNotify } = usePermissions('menus.administration.settings.notifications.read')
+const { hasPermission: canSeeIntegrations } = usePermissions('menus.administration.settings.integrations.read')
+const { hasPermission: canSeeSecurity } = usePermissions('menus.administration.settings.security.read')
+const { hasPermission: canSeeDashboard } = usePermissions('menus.administration.settings.dashboard.read')
+
+const tabs = computed(() => [
+  ...(canSeeBusiness.value ? [{ key: 'business', label: 'Business', icon: Building2 }] : []),
+  ...(canSeeBilling.value ? [{ key: 'billing', label: 'Billing / VAT', icon: CreditCard }] : []),
+  ...(canSeeBusiness.value ? [{ key: 'working-time', label: 'Working time', icon: Clock }] : []),
+  ...(canSeeBusiness.value ? [{ key: 'purchasing', label: 'Purchasing', icon: ShoppingCart }] : []),
+  ...(canSeeDashboard.value ? [{ key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
+  ...(canSeeNotify.value ? [{ key: 'notify', label: 'Notifications', icon: Bell }] : []),
+  ...(canSeeIntegrations.value ? [{ key: 'integrations', label: 'Integrations', icon: Satellite }] : []),
+  ...(canSeeSecurity.value ? [{ key: 'security', label: 'Security & Data', icon: ShieldCheck }] : []),
+])
+
+const activeTab = ref(tabs.value[0]?.key ?? 'business')
+
+// Security & data settings local copy (§6)
+const securitySettings = ref({
+  passwordMinLength: 8,
+  passwordRequireMixed: false,
+  idleTimeoutMinutes: 0,
+  retentionPhotosMonths: 0,
+  retentionJobsYears: 0,
+})
+
+async function saveSecurity() {
+  try {
+    await companyStore.saveCompanySettings({ ...securitySettings.value })
+    ToastService.success('Security settings saved')
+  } catch {
+    ToastService.error('Failed to save security settings')
+  }
+}
 
 const companyStore = useCompanyStore()
 
@@ -42,6 +76,10 @@ const billingSettings = ref<CompanySettings>({
   bankName: '',
   bankSortCode: '',
   bankAccountNumber: '',
+  storageChargeEnabled: false,
+  storageChargePerDay: 20,
+  storageChargeAfterDays: 3,
+  defaultTradeCreditAmount: null,
 })
 
 // Notification settings local copy
@@ -86,6 +124,17 @@ watch(
         bankName: settings.bankName ?? '',
         bankSortCode: settings.bankSortCode ?? '',
         bankAccountNumber: settings.bankAccountNumber ?? '',
+        storageChargeEnabled: settings.storageChargeEnabled ?? false,
+        storageChargePerDay: settings.storageChargePerDay ?? 20,
+        storageChargeAfterDays: settings.storageChargeAfterDays ?? 3,
+        defaultTradeCreditAmount: settings.defaultTradeCreditAmount ?? null,
+      }
+      securitySettings.value = {
+        passwordMinLength: settings.passwordMinLength ?? 8,
+        passwordRequireMixed: settings.passwordRequireMixed ?? false,
+        idleTimeoutMinutes: settings.idleTimeoutMinutes ?? 0,
+        retentionPhotosMonths: settings.retentionPhotosMonths ?? 0,
+        retentionJobsYears: settings.retentionJobsYears ?? 0,
       }
     }
   },
@@ -121,6 +170,9 @@ async function saveBusiness() {
 }
 
 async function saveBilling() {
+  // an emptied number input arrives as '' — the API wants null to clear the default
+  const credit = billingSettings.value.defaultTradeCreditAmount as number | null | ''
+  billingSettings.value.defaultTradeCreditAmount = credit === '' || credit == null ? null : Number(credit)
   await companyStore.saveCompanySettings(billingSettings.value)
   if (!companyStore.error) {
     ToastService.success('Settings saved.')
@@ -206,6 +258,69 @@ async function saveNotifications() {
         </template>
 
         <!-- Billing -->
+        <template v-else-if="activeTab === 'security'">
+          <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-5">Security &amp; Data</h2>
+          <div class="space-y-6 max-w-lg">
+
+            <div class="space-y-4">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">Passwords</p>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Minimum password length</label>
+                <input
+                  v-model.number="securitySettings.passwordMinLength" type="number" min="8" max="64"
+                  class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+              </div>
+              <label class="flex items-center justify-between gap-4 cursor-pointer">
+                <span class="text-sm text-slate-700 dark:text-slate-300">
+                  Require mixed characters
+                  <span class="block text-xs text-slate-400 mt-0.5">Uppercase, lowercase and a number.</span>
+                </span>
+                <input v-model="securitySettings.passwordRequireMixed" type="checkbox" class="w-4 h-4 accent-brand-500 flex-shrink-0" />
+              </label>
+            </div>
+
+            <div class="space-y-4 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-2">Sessions</p>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Idle timeout (minutes)</label>
+                <input
+                  v-model.number="securitySettings.idleTimeoutMinutes" type="number" min="0" max="1440"
+                  class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">0 = never. Inactive sessions are signed out and cannot silently resume.</p>
+              </div>
+            </div>
+
+            <div class="space-y-4 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-2">Data Retention</p>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Photos &amp; documents (months)</label>
+                  <input
+                    v-model.number="securitySettings.retentionPhotosMonths" type="number" min="0" max="120"
+                    class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Completed jobs (years)</label>
+                  <input
+                    v-model.number="securitySettings.retentionJobsYears" type="number" min="0" max="25"
+                    class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                </div>
+              </div>
+              <p class="text-xs text-slate-400">
+                0 = keep forever. Applies after a vehicle is collected; certificates are never deleted; invoices are always retained.
+              </p>
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <UiButton :disabled="companyStore.saving" @click="saveSecurity">Save Security Settings</UiButton>
+            </div>
+          </div>
+        </template>
+
         <template v-else-if="activeTab === 'billing'">
           <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-5">Billing & VAT</h2>
           <div class="space-y-6 max-w-lg">
@@ -285,6 +400,52 @@ async function saveNotifications() {
               </div>
             </div>
 
+            <!-- Storage charge (Module 9 — optional, off by default) -->
+            <div class="space-y-4 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-2">Storage Charge</p>
+              <label class="flex items-center justify-between gap-4 cursor-pointer">
+                <span class="text-sm text-slate-700 dark:text-slate-300">
+                  Charge storage for uncollected vehicles
+                  <span class="block text-xs text-slate-400 mt-0.5">Added daily to the job's draft invoice after the free days; editable per invoice before issuing.</span>
+                </span>
+                <input v-model="billingSettings.storageChargeEnabled" type="checkbox" class="w-4 h-4 accent-brand-500 flex-shrink-0" />
+              </label>
+              <div class="grid grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Storage charge (£/day)</label>
+                  <input
+                    v-model.number="billingSettings.storageChargePerDay"
+                    type="number" min="0" step="0.5"
+                    :disabled="!billingSettings.storageChargeEnabled"
+                    class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Free days after completion</label>
+                  <input
+                    v-model.number="billingSettings.storageChargeAfterDays"
+                    type="number" min="0"
+                    :disabled="!billingSettings.storageChargeEnabled"
+                    class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:opacity-50"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Trade credit (Sprint 20) -->
+            <div class="space-y-4 pt-2 border-t border-slate-100 dark:border-dark-border">
+              <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-2">Trade Credit</p>
+              <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Default trade credit for new trade accounts (£)</label>
+                <input
+                  v-model="billingSettings.defaultTradeCreditAmount"
+                  type="number" min="0" step="0.01" placeholder="None"
+                  class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <p class="text-xs text-slate-400 mt-1">Pre-fills the per-invoice trade credit on new B2B customers. Each account and each invoice can still be changed.</p>
+              </div>
+            </div>
+
             <!-- Bank Details -->
             <div class="space-y-4 pt-2 border-t border-slate-100 dark:border-dark-border">
               <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 pt-2">Bank Details</p>
@@ -305,6 +466,18 @@ async function saveNotifications() {
         </template>
 
         <!-- Notifications -->
+        <template v-else-if="activeTab === 'working-time'">
+          <WorkingTimeSettings />
+        </template>
+
+        <template v-else-if="activeTab === 'purchasing'">
+          <ProcurementSettings />
+        </template>
+
+        <template v-else-if="activeTab === 'dashboard'">
+          <DashboardDefaultsSettings />
+        </template>
+
         <template v-else-if="activeTab === 'integrations'">
           <div class="space-y-6">
             <AccountingSettings />

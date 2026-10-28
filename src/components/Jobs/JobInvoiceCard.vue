@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import UiToggle from '@/components/Ui/UiToggle.vue'
+import { getCustomer, type Customer } from '@/api/customers.api'
+import { CustomerType } from '@/types/generated/enums/customer'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { Receipt, Plus, Send, Banknote } from 'lucide-vue-next'
+import { Receipt, Plus, Send, Banknote, Pencil } from 'lucide-vue-next'
+import InvoiceEditModal from '@/components/Invoices/InvoiceEditModal.vue'
 import { getInvoicesForJob, generateInvoice, issueInvoice, recordInvoicePayment } from '@/api/invoices.api'
 import { retryInvoiceSync } from '@/api/accounting.api'
 import type { Invoice } from '@/api/invoices.api'
@@ -15,15 +19,35 @@ import { useCrudPermissions, usePermissions } from '@/composables/usePermissions
 import { ToastService } from '@/services/toast.service'
 import { showConfirmDialog } from '@/utils/alert'
 
-const props = defineProps<{ jobId: string }>()
+const props = defineProps<{ jobId: string; customerId?: string }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 const { canCreate, canRead: canViewInvoices } = useCrudPermissions('finance', 'invoices')
 const { hasPermission: canSend } = usePermissions('menus.finance.invoices.send')
 const { hasPermission: canMarkPaid } = usePermissions('menus.finance.invoices.markPaid')
+const { hasPermission: canUpdate } = usePermissions('menus.finance.invoices.update')
+const editingInvoice = ref<Invoice | null>(null)
 
 const invoices = ref<Invoice[]>([])
 const loading = ref(true)
+
+// ── Trade credit switch (Sprint 20) — trade (B2B) accounts with a credit amount only ──
+const customer = ref<Customer | null>(null)
+const applyTradeCredit = ref(true)
+const tradeCreditAmount = computed(() =>
+  customer.value?.type === CustomerType.B2B && Number(customer.value.tradeCreditAmount ?? 0) > 0
+    ? Number(customer.value.tradeCreditAmount)
+    : null,
+)
+
+async function loadCustomer() {
+  if (!props.customerId || !canCreate.value) return
+  try {
+    customer.value = await getCustomer(props.customerId)
+  } catch {
+    /* no customer access → no switch; the backend default still applies */
+  }
+}
 
 async function load() {
   if (!canViewInvoices.value) return
@@ -44,7 +68,7 @@ function apiError(err: any, fallback: string) {
 
 async function handleGenerate() {
   try {
-    await generateInvoice(props.jobId)
+    await generateInvoice(props.jobId, tradeCreditAmount.value != null ? { tradeCreditEnabled: applyTradeCredit.value } : undefined)
     ToastService.success('Draft invoice generated from approved quote')
     await load()
   } catch (err: any) {
@@ -111,7 +135,7 @@ function formatDate(d?: string | null): string {
   try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) } catch { return d }
 }
 
-onMounted(load)
+onMounted(() => { load(); loadCustomer() })
 </script>
 
 <template>
@@ -132,6 +156,13 @@ onMounted(load)
         ? 'No invoice yet — generate one once the quote is approved.'
         : 'No invoice yet — Accounts (or an admin) generates it from the approved quote.' }}
     </p>
+    <div v-if="!loading && invoices.length === 0 && canCreate && tradeCreditAmount != null" class="mt-3 rounded-lg border border-slate-100 dark:border-dark-border px-3 py-2.5">
+      <UiToggle
+        v-model="applyTradeCredit"
+        :label="`Apply trade credit (${gbp(tradeCreditAmount)})`"
+        description="Raised as a credit note and applied to the invoice when it is issued. Can still be changed on the draft."
+      />
+    </div>
 
     <div v-else class="space-y-4">
       <div v-for="inv in invoices" :key="inv.id" class="border border-slate-100 dark:border-dark-border rounded-lg p-3.5">
@@ -159,14 +190,17 @@ onMounted(load)
           <span class="ml-auto text-sm font-semibold text-slate-700 dark:text-slate-200">{{ gbp(inv.grossTotal) }}</span>
         </div>
         <div class="flex items-center justify-between text-xs text-slate-400">
-          <span>Net {{ gbp(inv.netTotal) }} · VAT {{ gbp(inv.vatAmount) }}<template v-if="inv.status === InvoiceStatus.ISSUED"> · Due {{ formatDate(inv.dueDate) }} · Balance {{ gbp(inv.balance) }}</template></span>
+          <span>Net {{ gbp(inv.netTotal) }} · VAT {{ gbp(inv.vatAmount) }}<template v-if="inv.status === InvoiceStatus.ISSUED"> · Due {{ formatDate(inv.dueDate) }}<template v-if="inv.creditsAllocated > 0"> · Credits {{ gbp(inv.creditsAllocated) }}</template> · Balance {{ gbp(inv.balance) }}</template><template v-else-if="inv.tradeCreditEnabled && inv.tradeCreditAmount"> · Trade credit {{ gbp(inv.tradeCreditAmount) }} at issue</template></span>
           <div class="flex items-center gap-1.5">
+            <UiButton v-if="inv.status === InvoiceStatus.DRAFT && canUpdate" variant="secondary" @click="editingInvoice = inv"><Pencil class="w-3.5 h-3.5" /> Edit</UiButton>
             <UiButton v-if="inv.status === InvoiceStatus.DRAFT && canSend" @click="handleIssue(inv)"><Send class="w-3.5 h-3.5" /> Issue</UiButton>
             <UiButton v-if="inv.status === InvoiceStatus.ISSUED && inv.balance > 0 && canMarkPaid" variant="secondary" @click="openPay(inv)"><Banknote class="w-3.5 h-3.5" /> Record Payment</UiButton>
           </div>
         </div>
       </div>
     </div>
+
+    <InvoiceEditModal :open="!!editingInvoice" :invoice="editingInvoice" @close="editingInvoice = null" @saved="load" />
 
     <!-- Payment modal -->
     <UiModal :open="!!payingInvoice" :title="`Record Payment — ${payingInvoice?.invoiceNumber ?? ''}`" @close="payingInvoice = null">

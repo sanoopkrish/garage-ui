@@ -5,7 +5,9 @@ import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { FileText, Plus, Send, Trash2, CheckCircle2, XCircle, Download } from 'lucide-vue-next'
+import { FileText, Plus, Send, Trash2, CheckCircle2, XCircle, Download, Sparkles, Loader2 } from 'lucide-vue-next'
+import { suggestQuoteLines } from '@/api/ai.api'
+import { AIFeatureType, useAiFeatures } from '@/composables/useAiFeatures'
 import { getQuotesForJob, createQuote, sendQuote, respondQuote, deleteQuote, downloadQuotePdf } from '@/api/quotes.api'
 import type { Quote, QuoteLineInput } from '@/api/quotes.api'
 import { QuoteStatus, QuoteLineType, QuoteLineStatus } from '@/types/generated/enums/quote'
@@ -86,6 +88,33 @@ function openBuilder() {
   draftLines.value = [emptyLine(QuoteLineType.LABOUR)]
   draftNotes.value = ''
   showBuilder.value = true
+}
+
+// ── AI line suggestions (draft only — user edits/removes before saving) ──────
+const { hasFeature } = useAiFeatures()
+const suggesting = ref(false)
+
+async function suggestLines() {
+  suggesting.value = true
+  try {
+    const suggestion = await suggestQuoteLines(props.jobId)
+    const mapped: DraftLine[] = suggestion.lines.map((l) => ({
+      lineType: l.lineType === 'part' ? QuoteLineType.PART : QuoteLineType.LABOUR,
+      description: l.description,
+      hours: l.hours != null ? String(l.hours) : '',
+      rate: '',
+      quantity: l.quantity != null ? String(l.quantity) : '1',
+      costPrice: l.costPrice != null ? String(l.costPrice) : '',
+      markupPercent: '',
+    }))
+    const existing = draftLines.value.filter((dl) => dl.description.trim())
+    draftLines.value = [...existing, ...mapped]
+    ToastService.success(suggestion.reasoning || 'Suggested lines added — review and adjust before saving')
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'AI suggestion failed')
+  } finally {
+    suggesting.value = false
+  }
 }
 
 async function submitQuote() {
@@ -250,7 +279,7 @@ onMounted(load)
             </button>
             <UiButton v-if="q.status === QuoteStatus.DRAFT && canSendQuote" @click="handleSend(q)"><Send class="w-3.5 h-3.5" /> Send</UiButton>
             <UiButton v-if="[QuoteStatus.SENT, QuoteStatus.PARTIALLY_APPROVED].includes(q.status) && canRespondQuote" variant="secondary" @click="openRespond(q)">Record Response</UiButton>
-            <button v-if="q.status === QuoteStatus.DRAFT" @click="handleDelete(q)" class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500" title="Delete draft">
+            <button v-if="q.status === QuoteStatus.DRAFT && canCreateQuote" @click="handleDelete(q)" class="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-400 hover:text-red-500" title="Delete draft">
               <Trash2 class="w-3.5 h-3.5" />
             </button>
           </div>
@@ -285,6 +314,16 @@ onMounted(load)
         <div class="flex gap-2">
           <UiButton variant="secondary" @click="draftLines.push(emptyLine(QuoteLineType.LABOUR))"><Plus class="w-3.5 h-3.5" /> Labour</UiButton>
           <UiButton variant="secondary" @click="draftLines.push(emptyLine(QuoteLineType.PART))"><Plus class="w-3.5 h-3.5" /> Part</UiButton>
+          <UiButton
+            v-if="hasFeature(AIFeatureType.QUOTE_SUGGESTIONS)"
+            variant="secondary"
+            :disabled="suggesting"
+            @click="suggestLines"
+          >
+            <Loader2 v-if="suggesting" class="w-3.5 h-3.5 animate-spin" />
+            <Sparkles v-else class="w-3.5 h-3.5" />
+            {{ suggesting ? 'Suggesting…' : 'Suggest with AI' }}
+          </UiButton>
         </div>
         <UiInput v-model="draftNotes" label="Notes (optional)" placeholder="Shown on the quote" />
       </div>

@@ -15,6 +15,10 @@ export interface AccountingConnection {
     defaultTaxType?: string
     syncInvoices?: boolean
     syncPayments?: boolean
+    syncCreditNotes?: boolean
+    /** Sprint 23 — supplier invoices (bills); off unless switched on */
+    syncBills?: boolean
+    defaultExpenseAccountCode?: string
     autoSync?: boolean
   }
 }

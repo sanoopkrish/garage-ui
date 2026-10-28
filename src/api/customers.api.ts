@@ -20,6 +20,9 @@ export interface Customer {
   labourRate?: number | null
   paymentTermsDays?: number
   poRequired: boolean
+  /** B2B only — fixed trade credit raised per invoice (null = none) */
+  tradeCreditAmount?: number | null
+  tradeCreditVatInclusive?: boolean
   notes?: string
   vehicleCount: number
   createdAt: string
@@ -36,6 +39,8 @@ export interface CreateCustomerDto {
   labourRate?: number
   paymentTermsDays?: number
   poRequired?: boolean
+  tradeCreditAmount?: number | null
+  tradeCreditVatInclusive?: boolean
   notes?: string
 }
 
@@ -79,6 +84,23 @@ export async function createCustomer(dto: CreateCustomerDto): Promise<Customer> 
 
 export async function updateCustomer(id: string, dto: UpdateCustomerDto): Promise<Customer> {
   const response = await api.patch(`/customers/${id}`, dto)
+  return response.data?.data ?? response.data
+}
+
+export async function gdprExportCustomer(id: string, displayName: string): Promise<void> {
+  const response = await api.get(`/customers/${id}/gdpr-export`)
+  const data = response.data?.data ?? response.data
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `gdpr-export-${displayName.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+export async function gdprEraseCustomer(id: string): Promise<{ erased: boolean; filesDeleted: number; note: string }> {
+  const response = await api.post(`/customers/${id}/gdpr-erase`)
   return response.data?.data ?? response.data
 }
 

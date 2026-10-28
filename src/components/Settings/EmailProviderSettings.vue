@@ -204,7 +204,7 @@ onMounted(load)
       <!-- Microsoft 365 (Graph) -->
       <template v-else-if="emailProvider === 'microsoft365'">
         <div class="rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-800 dark:text-blue-300">
-          Sends via the Microsoft Graph API. The workshop's Microsoft 365 admin must grant the GarageOS
+          Sends via the Microsoft Graph API. The workshop's Microsoft 365 admin must grant the Cruise
           application consent to send mail; the Azure tenant is resolved from the email domain automatically.
         </div>
         <div class="max-w-sm">

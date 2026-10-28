@@ -5,8 +5,9 @@ import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiBadge from '@/components/Ui/UiBadge.vue'
-import { ArrowLeft, Building2, Phone, LayoutGrid, Mail, Database, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Building2, Phone, LayoutGrid, Mail, Sparkles, Database, Loader2 } from 'lucide-vue-next'
 import EmailProviderSettings from '@/components/Settings/EmailProviderSettings.vue'
+import AiSettings from '@/components/Settings/AiSettings.vue'
 import { useCompaniesStore } from '@/stores/companies.store'
 import { ToastService } from '@/services/toast.service'
 import {
@@ -22,7 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const store = useCompaniesStore()
 
-const activeTab = ref<'general' | 'contact' | 'modules' | 'email'>('general')
+const activeTab = ref<'general' | 'contact' | 'modules' | 'email' | 'ai'>('general')
 const loading = ref(true)
 const saving = ref(false)
 const seedingData = ref(false)
@@ -32,6 +33,7 @@ const tabs = [
   { key: 'contact', label: 'Contact', icon: Phone },
   { key: 'modules', label: 'Modules', icon: LayoutGrid },
   { key: 'email', label: 'Email', icon: Mail },
+  { key: 'ai', label: 'AI', icon: Sparkles },
 ]
 
 const company = computed(() => store.currentCompany)
@@ -357,6 +359,11 @@ watch(() => route.params.id, load)
           <!-- Email tab -->
           <div v-if="activeTab === 'email'">
             <EmailProviderSettings :company-id="company.id" />
+          </div>
+
+          <!-- AI tab -->
+          <div v-if="activeTab === 'ai'">
+            <AiSettings :company-id="company.id" />
           </div>
         </div>
       </div>

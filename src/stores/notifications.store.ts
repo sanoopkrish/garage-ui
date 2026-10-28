@@ -14,8 +14,14 @@ export const useNotificationsStore = defineStore('notifications', () => {
   const total = ref(0)
   const loading = ref(false)
   const socket = ref<Socket | null>(null)
+  /** Live panic alerts awaiting acknowledgement (rendered by PanicAlertOverlay) */
+  const panicAlerts = ref<AppNotification[]>([])
 
   const unreadCount = computed(() => total.value)
+
+  function dismissPanicAlert(id: string): void {
+    panicAlerts.value = panicAlerts.value.filter((a) => a.id !== id)
+  }
 
   async function fetchNotifications(unreadOnly?: boolean): Promise<void> {
     loading.value = true
@@ -78,6 +84,12 @@ export const useNotificationsStore = defineStore('notifications', () => {
         notifications.value = notifications.value.slice(0, 50)
       }
       total.value += 1
+
+      // Panic alerts must interrupt: queued for the full-screen PanicAlertOverlay,
+      // which stays up until someone acknowledges it
+      if (notification.type === 'PANIC_ALERT') {
+        panicAlerts.value.push(notification)
+      }
     })
   }
 
@@ -89,6 +101,8 @@ export const useNotificationsStore = defineStore('notifications', () => {
   return {
     notifications,
     socket,
+    panicAlerts,
+    dismissPanicAlert,
     unreadCount,
     total,
     loading,

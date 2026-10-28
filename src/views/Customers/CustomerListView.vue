@@ -76,6 +76,8 @@ const form = reactive({
   labourRate: '',
   paymentTermsDays: '',
   poRequired: false,
+  tradeCreditAmount: '',
+  tradeCreditVatInclusive: true,
   notes: '',
 })
 
@@ -91,6 +93,8 @@ function resetForm() {
   form.labourRate = ''
   form.paymentTermsDays = ''
   form.poRequired = false
+  form.tradeCreditAmount = ''
+  form.tradeCreditVatInclusive = true
   form.notes = ''
   formErrors.name = ''
 }
@@ -113,13 +117,26 @@ function openEditModal(customer: Customer) {
   form.labourRate = customer.labourRate != null ? String(customer.labourRate) : ''
   form.paymentTermsDays = customer.paymentTermsDays != null ? String(customer.paymentTermsDays) : ''
   form.poRequired = customer.poRequired
+  form.tradeCreditAmount = customer.tradeCreditAmount != null ? String(customer.tradeCreditAmount) : ''
+  form.tradeCreditVatInclusive = customer.tradeCreditVatInclusive ?? true
   form.notes = customer.notes ?? ''
   showModal.value = true
 }
 
 function buildDto(): CreateCustomerDto {
   const isB2b = form.type === CustomerType.B2B
+  // Trade credit (Sprint 20): on edit an empty field clears it; on create an empty field
+  // is omitted so the company default for new trade accounts applies.
+  const tradeCredit: Pick<CreateCustomerDto, 'tradeCreditAmount' | 'tradeCreditVatInclusive'> = !isB2b
+    ? {}
+    : {
+        ...(form.tradeCreditAmount !== ''
+          ? { tradeCreditAmount: Number(form.tradeCreditAmount) }
+          : editingId.value ? { tradeCreditAmount: null } : {}),
+        tradeCreditVatInclusive: form.tradeCreditVatInclusive,
+      }
   return {
+    ...tradeCredit,
     type: form.type,
     name: form.name.trim(),
     email: form.email.trim() || undefined,
@@ -304,6 +321,13 @@ onMounted(() => {
             <label class="flex items-center gap-2 pb-2.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
               <input v-model="form.poRequired" type="checkbox" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
               PO required
+            </label>
+          </div>
+          <div class="grid grid-cols-2 gap-4 items-end">
+            <UiInput v-model="form.tradeCreditAmount" label="Trade credit per invoice (£)" type="number" :placeholder="editingId ? 'None' : 'Company default'" />
+            <label class="flex items-center gap-2 pb-2.5 text-sm text-slate-600 dark:text-slate-300 cursor-pointer">
+              <input v-model="form.tradeCreditVatInclusive" type="checkbox" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500" />
+              VAT inclusive
             </label>
           </div>
         </template>

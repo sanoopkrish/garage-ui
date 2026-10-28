@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { Bell, Sun, Moon, LogOut, User, ChevronDown } from 'lucide-vue-next'
+import { ref, onMounted, watch } from 'vue'
+import { linkifyHtml } from '@/utils/linkify'
+import { useRoute, useRouter } from 'vue-router'
+import { Bell, Sun, Moon, LogOut, User, ChevronDown, CircleQuestionMark } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import { useHelpStore } from '@/stores/help.store'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { useDarkMode } from '@/composables/useDarkMode'
+import ClockWidget from '@/components/Hr/ClockWidget.vue'
 
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const router = useRouter()
+const route = useRoute()
+const helpStore = useHelpStore()
 const { dark, toggle: toggleDark } = useDarkMode()
 const dropdownOpen = ref(false)
+const avatarFailed = ref(false)
+// A new photo URL (fresh upload or re-fetched presign) gets a fresh chance to load
+watch(() => authStore.profilePhotoUrl, () => { avatarFailed.value = false })
 const notificationsOpen = ref(false)
 
 onMounted(() => {
@@ -61,6 +69,19 @@ const logout = async () => {
 
     <!-- Right actions -->
     <div class="flex items-center gap-2">
+      <!-- Clock in / out (Sprint 18) -->
+      <ClockWidget variant="header" />
+
+      <!-- Help for this screen (Sprint 25) -->
+      <button
+        @click="helpStore.openForRoute(route.name as string)"
+        class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-dark-surface transition-colors"
+        title="Help for this screen"
+        aria-label="Help"
+      >
+        <CircleQuestionMark class="w-4.5 h-4.5" />
+      </button>
+
       <!-- Dark mode -->
       <button
         @click="toggleDark"
@@ -140,9 +161,7 @@ const logout = async () => {
                   >
                     {{ item.title }}
                   </p>
-                  <p class="text-sm text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-2">
-                    {{ item.message }}
-                  </p>
+                  <p class="text-sm text-slate-400 dark:text-slate-500 mt-0.5 line-clamp-2" v-html="linkifyHtml(item.message)" />
                   <p class="text-xs text-slate-400 dark:text-slate-600 mt-1">
                     {{ formatDate(item.createdAt) }}
                   </p>
@@ -155,9 +174,13 @@ const logout = async () => {
               v-if="recentNotifications().length > 0"
               class="border-t border-slate-100 dark:border-dark-border px-4 py-2.5 flex-shrink-0"
             >
-              <span class="text-xs text-slate-400 dark:text-slate-500 cursor-not-allowed select-none">
+              <router-link
+                to="/notifications"
+                @click="notificationsOpen = false"
+                class="text-xs text-brand-600 hover:underline"
+              >
                 View all notifications
-              </span>
+              </router-link>
             </div>
           </div>
         </Transition>
@@ -169,7 +192,14 @@ const logout = async () => {
           @click="dropdownOpen = !dropdownOpen"
           class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-dark-surface transition-colors"
         >
-          <div class="w-7 h-7 bg-brand-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+          <img
+            v-if="authStore.profilePhotoUrl && !avatarFailed"
+            :src="authStore.profilePhotoUrl"
+            :alt="authStore.fullName"
+            class="w-7 h-7 rounded-full object-cover"
+            @error="avatarFailed = true"
+          />
+          <div v-else class="w-7 h-7 bg-brand-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
             {{ authStore.fullName.charAt(0) || 'U' }}
           </div>
           <span class="text-sm font-medium text-slate-700 dark:text-slate-200 hidden sm:block">
@@ -185,7 +215,7 @@ const logout = async () => {
             class="absolute right-0 mt-1 w-48 bg-white dark:bg-dark-surface border border-slate-100 dark:border-dark-border rounded-xl shadow-lg py-1 z-50"
           >
             <router-link
-              to="/admin/settings"
+              to="/profile"
               @click="dropdownOpen = false"
               class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5"
             >

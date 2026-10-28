@@ -4,8 +4,15 @@ import { useRoute, useRouter } from 'vue-router'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiBadge from '@/components/Ui/UiBadge.vue'
-import { ArrowLeft, Phone, Mail, Car, Wrench, FileText } from 'lucide-vue-next'
+import { ArrowLeft, Phone, Mail, Car, Wrench, FileText, ShieldCheck, Download, Eraser, ReceiptText } from 'lucide-vue-next'
+import { getCreditNotesForCustomer, type CreditNote } from '@/api/credit-notes.api'
+import { creditNoteReasonLabels, creditNoteStatusLabels, creditNoteStatusVariant } from '@/utils/creditNoteStatus'
+import { gbp } from '@/utils/invoiceStatus'
+import { usePermissions } from '@/composables/usePermissions'
 import { useCustomersStore } from '@/stores/customers.store'
+import { gdprExportCustomer, gdprEraseCustomer } from '@/api/customers.api'
+import { useCrudPermissions } from '@/composables/usePermissions'
+import { showConfirmDialog } from '@/utils/alert'
 import { getVehicles } from '@/api/vehicles.api'
 import { getJobs } from '@/api/jobs.api'
 import { ToastService } from '@/services/toast.service'
@@ -24,7 +31,48 @@ const vehicles = ref<Vehicle[]>([])
 const jobs = ref<Job[]>([])
 const loading = ref(true)
 
+// Sprint 20 — the account's credit notes (finance-gated)
+const { hasPermission: canSeeCreditNotes } = usePermissions('menus.finance.creditNotes.read')
+const creditNotes = ref<CreditNote[]>([])
+
 const displayName = computed(() => customer.value?.businessName || customer.value?.name || '')
+const { canDelete } = useCrudPermissions('crm', 'customers')
+const gdprBusy = ref(false)
+
+async function onGdprExport() {
+  if (!customer.value) return
+  gdprBusy.value = true
+  try {
+    await gdprExportCustomer(customer.value.id, displayName.value)
+    ToastService.success('Data export downloaded')
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Export failed')
+  } finally {
+    gdprBusy.value = false
+  }
+}
+
+async function onGdprErase() {
+  if (!customer.value) return
+  const first = await showConfirmDialog(
+    `Erase all personal data for "${displayName.value}"? Photos and documents are permanently deleted; invoices and certificates are retained by legal obligation. This cannot be undone.`,
+    false,
+    'Continue',
+  )
+  if (!first.isConfirmed) return
+  const second = await showConfirmDialog('Are you absolutely sure? The customer record will be anonymised permanently.', false, 'Erase')
+  if (!second.isConfirmed) return
+  gdprBusy.value = true
+  try {
+    const result = await gdprEraseCustomer(customer.value.id)
+    ToastService.success(`Personal data erased — ${result.filesDeleted} file(s) deleted`)
+    customer.value = await customersStore.getCustomer(customer.value.id)
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Erasure failed')
+  } finally {
+    gdprBusy.value = false
+  }
+}
 const isB2b = computed(() => customer.value?.type === CustomerType.B2B)
 
 function formatDate(dateStr?: string | null): string {
@@ -52,6 +100,9 @@ onMounted(async () => {
     ])
     vehicles.value = vehicleResponse.items
     jobs.value = jobResponse.items
+    if (canSeeCreditNotes.value) {
+      creditNotes.value = await getCreditNotesForCustomer(id).catch(() => [])
+    }
   } catch {
     ToastService.error('Failed to load customer')
     router.push('/customers')
@@ -115,6 +166,27 @@ onMounted(async () => {
             <div class="flex justify-between"><span class="text-slate-400">Payment Terms</span><span class="font-medium text-slate-700 dark:text-slate-200">{{ customer.paymentTermsDays != null ? `${customer.paymentTermsDays} days` : '—' }}</span></div>
             <div class="flex justify-between"><span class="text-slate-400">VAT Number</span><span class="font-medium text-slate-700 dark:text-slate-200">{{ customer.vatNumber || '—' }}</span></div>
             <div class="flex justify-between"><span class="text-slate-400">PO Required</span><span class="font-medium text-slate-700 dark:text-slate-200">{{ customer.poRequired ? 'Yes' : 'No' }}</span></div>
+            <div class="flex justify-between"><span class="text-slate-400">Trade Credit</span><span class="font-medium text-slate-700 dark:text-slate-200">{{ customer.tradeCreditAmount ? `${gbp(customer.tradeCreditAmount)} per invoice (${customer.tradeCreditVatInclusive === false ? 'plus VAT' : 'inc. VAT'})` : 'None' }}</span></div>
+          </div>
+        </div>
+
+        <!-- Credit notes (Sprint 20) -->
+        <div v-if="canSeeCreditNotes && creditNotes.length" class="card">
+          <div class="flex items-center gap-2 mb-3">
+            <ReceiptText class="w-4 h-4 text-brand-500" />
+            <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200">Credit Notes ({{ creditNotes.length }})</h2>
+          </div>
+          <div class="space-y-2 text-sm">
+            <div v-for="cn in creditNotes" :key="cn.id" class="flex items-center justify-between gap-2 border-b border-slate-50 dark:border-dark-border pb-2 last:border-0 last:pb-0">
+              <div class="min-w-0">
+                <router-link :to="{ path: '/invoices', query: { tab: 'credit-notes', cn: cn.id } }" class="font-medium text-brand-600 hover:underline">{{ cn.creditNoteNumber }}</router-link>
+                <p class="text-xs text-slate-400 truncate">{{ creditNoteReasonLabels[cn.reason] }}<template v-if="cn.invoiceNumber"> · {{ cn.invoiceNumber }}</template></p>
+              </div>
+              <div class="text-right flex-shrink-0">
+                <p class="font-medium text-slate-700 dark:text-slate-200">{{ gbp(cn.grossTotal) }}</p>
+                <UiBadge :variant="(creditNoteStatusVariant[cn.status] as any)">{{ creditNoteStatusLabels[cn.status] }}</UiBadge>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -140,6 +212,26 @@ onMounted(async () => {
                 <p class="text-xs font-mono text-slate-400">{{ v.registration }}<template v-if="v.colour"> · {{ v.colour }}</template></p>
               </div>
             </router-link>
+          </div>
+        </div>
+
+        <!-- Data protection (GDPR, proposal §6) -->
+        <div v-if="canDelete" class="card">
+          <div class="flex items-center gap-2 mb-3">
+            <ShieldCheck class="w-4 h-4 text-brand-500" />
+            <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200">Data Protection</h2>
+          </div>
+          <p class="text-xs text-slate-400 mb-3">
+            Subject access and right-to-erasure requests. Erasure anonymises personal data and deletes photos/documents;
+            invoices and certificates are retained by legal obligation.
+          </p>
+          <div class="flex flex-wrap gap-2">
+            <UiButton size="sm" variant="secondary" :disabled="gdprBusy" @click="onGdprExport">
+              <Download class="w-3.5 h-3.5" /> Export data
+            </UiButton>
+            <UiButton size="sm" variant="danger" :disabled="gdprBusy" @click="onGdprErase">
+              <Eraser class="w-3.5 h-3.5" /> Erase personal data
+            </UiButton>
           </div>
         </div>
       </div>

@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
-import { Gauge, ArrowLeft, LogOut, Bell, BellRing } from 'lucide-vue-next'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Gauge, ArrowLeft, LogOut, Bell, BellRing, CircleQuestionMark } from 'lucide-vue-next'
 import { useAuthStore } from '@/stores/auth'
+import { usePermissions } from '@/composables/usePermissions'
 import { useNotificationsStore } from '@/stores/notifications.store'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 import { ToastService } from '@/services/toast.service'
+import PanicButton from '@/components/Field/PanicButton.vue'
+import ClockWidget from '@/components/Hr/ClockWidget.vue'
+import HelpDrawer from '@/components/Help/HelpDrawer.vue'
+import { useHelpStore } from '@/stores/help.store'
+import FieldReceiptButton from '@/components/Field/FieldReceiptButton.vue'
 
 defineProps<{
   title: string
@@ -13,9 +20,19 @@ defineProps<{
 }>()
 
 const router = useRouter()
+const route = useRoute()
+
+// Sprint 18 — top-level field pages share a clock card and a Jobs / Week switch
+const { hasPermission: canFindKit } = usePermissions('menus.assets.register.read')
+const fieldTabs = computed(() => [
+  { to: '/field', label: 'Jobs' },
+  { to: '/field/timesheet', label: 'My week' },
+  ...(canFindKit.value ? [{ to: '/field/kit', label: 'Find kit' }] : []),
+])
 const authStore = useAuthStore()
 const notificationsStore = useNotificationsStore()
 const push = usePushNotifications()
+const help = useHelpStore()
 
 async function togglePush() {
   if (!push.supported.value || push.busy.value) return
@@ -50,6 +67,14 @@ async function togglePush() {
 
       <h1 class="flex-1 font-semibold text-base truncate">{{ title }}</h1>
 
+      <button
+        @click="help.openForRoute(route.name as string)"
+        class="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+        aria-label="Help"
+      >
+        <CircleQuestionMark class="w-5 h-5" />
+      </button>
+
       <component
         :is="push.supported.value ? 'button' : 'div'"
         class="relative"
@@ -77,7 +102,21 @@ async function togglePush() {
     </header>
 
     <main class="flex-1 w-full max-w-2xl mx-auto p-4 pb-24">
+      <template v-if="!backTo">
+        <ClockWidget variant="card" />
+        <FieldReceiptButton />
+        <div class="flex gap-1 p-1 mb-4 rounded-xl bg-slate-200/70 dark:bg-white/10">
+          <router-link
+            v-for="tab in fieldTabs" :key="tab.to" :to="tab.to" class="flex-1"
+            :class="['text-center py-2 rounded-lg text-sm font-semibold transition-colors',
+              route.path === tab.to ? 'bg-white dark:bg-dark-surface text-slate-800 dark:text-white shadow-sm' : 'text-slate-500']"
+          >{{ tab.label }}</router-link>
+        </div>
+      </template>
       <slot />
     </main>
+
+    <PanicButton />
+    <HelpDrawer />
   </div>
 </template>

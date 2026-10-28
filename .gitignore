@@ -28,3 +28,6 @@ certs
 .env
 .env.*
 !.env.example
+
+# vite-plugin-pwa dev output
+dev-dist

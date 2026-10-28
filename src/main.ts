@@ -15,8 +15,8 @@ const app = createApp(App)
 app.directive('click-outside', clickOutside)
 app.directive('permission', vPermission)
 
-app.config.errorHandler = (err) => handleError(err)
-window.addEventListener('unhandledrejection', (e) => handleError(e.reason))
+app.config.errorHandler = (err) => handleError(err, 'vue')
+window.addEventListener('unhandledrejection', (e) => handleError(e.reason, 'rejection'))
 
 app.use(Toast, toastOptions)
 app.use(pinia)
@@ -26,7 +26,10 @@ const init = async () => {
   try {
     await router.isReady()
     const authStore = useAuthStore(pinia)
-    await authStore.initialize()
+    // The wall-tablet kiosk is never logged in — don't try to restore a session there
+    // (a failed refresh would bounce the tablet to the login page)
+    if (router.currentRoute.value.name !== 'kiosk') await authStore.initialize()
+    else authStore.initialized = true
   } catch (e) {
     console.error('Init failed:', e)
   }

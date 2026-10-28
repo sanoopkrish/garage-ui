@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
@@ -8,7 +8,12 @@ import { retryInvoiceSync } from '@/api/accounting.api'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { ArrowLeft, Send, Banknote, Ban, Download, UploadCloud } from 'lucide-vue-next'
+import { ArrowLeft, Send, Banknote, Ban, Download, UploadCloud, Pencil, ReceiptText } from 'lucide-vue-next'
+import CreditNoteFormModal from '@/components/Invoices/CreditNoteFormModal.vue'
+import type { CreditNote } from '@/api/credit-notes.api'
+import { creditNoteReasonLabels, creditNoteStatusLabels } from '@/utils/creditNoteStatus'
+import { CreditNoteStatus } from '@/types/generated/enums/credit-note'
+import InvoiceEditModal from '@/components/Invoices/InvoiceEditModal.vue'
 import { getInvoice, issueInvoice, recordInvoicePayment, voidInvoice, downloadInvoicePdf } from '@/api/invoices.api'
 import type { Invoice } from '@/api/invoices.api'
 import { InvoiceStatus, PaymentMethod } from '@/types/generated/enums/invoice'
@@ -20,8 +25,21 @@ import { showConfirmDialog } from '@/utils/alert'
 const route = useRoute()
 const router = useRouter()
 const { hasPermission: canSend } = usePermissions('menus.finance.invoices.send')
+const { hasPermission: canUpdate } = usePermissions('menus.finance.invoices.update')
+const showEdit = ref(false)
 const { hasPermission: canMarkPaid } = usePermissions('menus.finance.invoices.markPaid')
 const { hasPermission: canDelete } = usePermissions('menus.finance.invoices.delete')
+const { hasPermission: canSeeCreditNotes } = usePermissions('menus.finance.creditNotes.read')
+const { hasPermission: canRaiseCredit } = usePermissions('menus.finance.creditNotes.create')
+
+// Sprint 20 — credit notes replace Void as the correction tool once an invoice is issued
+const showRaiseCredit = ref(false)
+const tradeCredit = computed(() => invoice.value?.creditNotes?.find((c) => c.isTradeCredit && c.status !== CreditNoteStatus.VOID) ?? null)
+const creditNoteLink = (id: string) => ({ path: '/invoices', query: { tab: 'credit-notes', cn: id } })
+
+function onCreditRaised(creditNote: CreditNote) {
+  router.push(creditNoteLink(creditNote.id))
+}
 
 const invoice = ref<Invoice | null>(null)
 const xeroPushing = ref(false)
@@ -126,6 +144,7 @@ onMounted(load)
       </button>
       <div v-if="invoice" class="flex items-center gap-2">
         <UiButton variant="secondary" @click="handlePdf"><Download class="w-4 h-4" /> PDF</UiButton>
+        <UiButton v-if="invoice.status === InvoiceStatus.DRAFT && canUpdate" variant="secondary" @click="showEdit = true"><Pencil class="w-4 h-4" /> Edit</UiButton>
         <UiButton v-if="invoice.status === InvoiceStatus.DRAFT && canSend" @click="handleIssue"><Send class="w-4 h-4" /> Issue</UiButton>
         <UiButton v-if="invoice.status === InvoiceStatus.ISSUED && invoice.balance > 0 && canMarkPaid" @click="openPay"><Banknote class="w-4 h-4" /> Record Payment</UiButton>
         <UiButton
@@ -136,7 +155,8 @@ onMounted(load)
         >
           <UploadCloud class="w-4 h-4" /> {{ invoice.accountingSyncStatus === 'error' ? 'Retry Xero push' : 'Push to Xero' }}
         </UiButton>
-        <UiButton v-if="invoice.status !== InvoiceStatus.VOID && invoice.paymentStatus !== 'paid' && canDelete" variant="secondary" @click="handleVoid"><Ban class="w-4 h-4" /> Void</UiButton>
+        <UiButton v-if="invoice.status === InvoiceStatus.ISSUED && canRaiseCredit" variant="secondary" @click="showRaiseCredit = true"><ReceiptText class="w-4 h-4" /> Raise credit note</UiButton>
+        <UiButton v-if="invoice.status === InvoiceStatus.DRAFT && canDelete" variant="secondary" @click="handleVoid"><Ban class="w-4 h-4" /> Void</UiButton>
       </div>
     </div>
 
@@ -155,6 +175,13 @@ onMounted(load)
           ><UiBadge variant="done" title="Open in Xero">Xero ✓ ↗</UiBadge></a>
           <UiBadge v-else-if="invoice.accountingSyncStatus === 'synced'" variant="done">Xero ✓</UiBadge>
           <UiBadge v-else-if="invoice.accountingSyncStatus === 'error'" variant="cancelled" :title="invoice.accountingSyncError ?? ''">Xero failed</UiBadge>
+          <router-link v-if="tradeCredit && canSeeCreditNotes" :to="creditNoteLink(tradeCredit.id)">
+            <UiBadge variant="info" :title="`Open ${tradeCredit.creditNoteNumber}`">Trade credit {{ gbp(tradeCredit.gross) }} applied ↗</UiBadge>
+          </router-link>
+          <UiBadge v-else-if="tradeCredit" variant="info">Trade credit {{ gbp(tradeCredit.gross) }} applied</UiBadge>
+          <UiBadge v-else-if="invoice.status === InvoiceStatus.DRAFT && invoice.tradeCreditEnabled && invoice.tradeCreditAmount" variant="info">
+            Trade credit {{ gbp(invoice.tradeCreditAmount) }} will apply at issue
+          </UiBadge>
         </div>
 
         <table class="w-full text-sm mb-4">
@@ -182,6 +209,7 @@ onMounted(load)
             <div class="flex justify-between"><span class="text-slate-400">VAT ({{ invoice.vatRatePercent }}%)</span><span class="text-slate-700 dark:text-slate-200">{{ gbp(invoice.vatAmount) }}</span></div>
             <div class="flex justify-between font-semibold border-t border-slate-100 dark:border-dark-border pt-1.5"><span class="text-slate-700 dark:text-slate-200">Total</span><span class="text-slate-800 dark:text-slate-100">{{ gbp(invoice.grossTotal) }}</span></div>
             <div class="flex justify-between"><span class="text-slate-400">Paid</span><span class="text-green-600">{{ gbp(invoice.amountPaid) }}</span></div>
+            <div v-if="invoice.creditsAllocated > 0" class="flex justify-between"><span class="text-slate-400">Credits applied</span><span class="text-green-600">−{{ gbp(invoice.creditsAllocated) }}</span></div>
             <div class="flex justify-between font-semibold"><span class="text-slate-700 dark:text-slate-200">Balance</span><span :class="invoice.balance > 0 ? 'text-amber-600' : 'text-green-600'">{{ gbp(invoice.balance) }}</span></div>
           </div>
         </div>
@@ -198,6 +226,26 @@ onMounted(load)
           <div class="flex justify-between"><span class="text-slate-400">Due</span><span class="text-slate-700 dark:text-slate-200">{{ formatDate(invoice.dueDate) }}</span></div>
         </div>
 
+        <div v-if="canSeeCreditNotes && invoice.creditNotes?.length" class="card">
+          <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Credits</h2>
+          <div class="space-y-2 text-sm">
+            <div v-for="c in invoice.creditNotes" :key="c.id" class="flex items-center justify-between gap-2 border-b border-slate-50 dark:border-dark-border pb-1.5 last:border-0">
+              <span class="min-w-0">
+                <router-link :to="creditNoteLink(c.id)" class="text-brand-600 hover:underline font-medium">{{ c.creditNoteNumber }}</router-link>
+                <span class="text-xs text-slate-400"> · {{ creditNoteReasonLabels[c.reason] }}<template v-if="c.status !== CreditNoteStatus.ISSUED"> · {{ creditNoteStatusLabels[c.status] }}</template></span>
+              </span>
+              <span class="text-right">
+                <span class="font-medium text-slate-700 dark:text-slate-200">{{ gbp(c.allocated) }}</span>
+                <span v-if="c.allocated < c.gross" class="block text-xs text-slate-400">of {{ gbp(c.gross) }}</span>
+              </span>
+            </div>
+          </div>
+          <div class="flex justify-between text-sm font-semibold mt-2 pt-2 border-t border-slate-100 dark:border-dark-border">
+            <span class="text-slate-700 dark:text-slate-200">Net balance</span>
+            <span :class="invoice.balance > 0 ? 'text-amber-600' : 'text-green-600'">{{ gbp(invoice.balance) }}</span>
+          </div>
+        </div>
+
         <div class="card">
           <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-2">Payments</h2>
           <p v-if="invoice.payments.length === 0" class="text-sm text-slate-400">No payments recorded.</p>
@@ -210,6 +258,9 @@ onMounted(load)
         </div>
       </div>
     </div>
+
+    <InvoiceEditModal :open="showEdit" :invoice="invoice" @close="showEdit = false" @saved="(updated) => { invoice = updated }" />
+    <CreditNoteFormModal :open="showRaiseCredit" :prefillInvoice="invoice" @close="showRaiseCredit = false" @saved="onCreditRaised" />
 
     <UiModal :open="showPay" :title="`Record Payment — ${invoice?.invoiceNumber ?? ''}`" @close="showPay = false">
       <div class="space-y-4">

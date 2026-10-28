@@ -11,6 +11,9 @@ import {
 } from '@/api/accounting.api'
 import { ToastService } from '@/services/toast.service'
 import { showConfirmDialog } from '@/utils/alert'
+import { usePermissions } from '@/composables/usePermissions'
+
+const { hasPermission: canManage } = usePermissions('menus.administration.settings.integrations.update')
 
 const connections = ref<AccountingConnection[]>([])
 const logs = ref<SyncLogRow[]>([])
@@ -26,6 +29,9 @@ const form = reactive({
   defaultPaymentAccountCode: '',
   syncInvoices: true,
   syncPayments: true,
+  syncCreditNotes: true,
+  syncBills: false,
+  defaultExpenseAccountCode: '',
   autoSync: true,
 })
 
@@ -38,6 +44,9 @@ async function load() {
       form.defaultPaymentAccountCode = xero.value.settings.defaultPaymentAccountCode ?? ''
       form.syncInvoices = xero.value.settings.syncInvoices ?? true
       form.syncPayments = xero.value.settings.syncPayments ?? true
+      form.syncCreditNotes = xero.value.settings.syncCreditNotes ?? true
+      form.syncBills = xero.value.settings.syncBills ?? false
+      form.defaultExpenseAccountCode = xero.value.settings.defaultExpenseAccountCode ?? ''
       form.autoSync = xero.value.settings.autoSync ?? true
     }
     const logResult = await getSyncLogs({ pageSize: 8 })
@@ -69,6 +78,9 @@ async function saveSettings() {
       defaultPaymentAccountCode: form.defaultPaymentAccountCode.trim() || undefined,
       syncInvoices: form.syncInvoices,
       syncPayments: form.syncPayments,
+      syncCreditNotes: form.syncCreditNotes,
+      syncBills: form.syncBills,
+      defaultExpenseAccountCode: form.defaultExpenseAccountCode.trim() || undefined,
       autoSync: form.autoSync,
     })
     ToastService.success('Accounting settings saved')
@@ -112,7 +124,7 @@ onMounted(() => {
     </div>
 
     <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">
-      Issued invoices and recorded payments are pushed to Xero automatically.
+      Issued invoices, credit notes and recorded payments are pushed to Xero automatically.
       The workshop connects its own Xero organisation — no credentials are shared.
     </p>
     <p v-if="xero?.lastError" class="text-sm text-red-500 mb-4">{{ xero.lastError }}</p>
@@ -120,24 +132,30 @@ onMounted(() => {
     <div v-if="loading" class="h-16 animate-pulse bg-slate-100 dark:bg-white/5 rounded-lg" />
 
     <template v-else-if="!isConnected">
-      <UiButton :disabled="connecting" @click="connect">
+      <UiButton v-if="canManage" :disabled="connecting" @click="connect">
         <Link2 class="w-4 h-4" /> {{ connecting ? 'Redirecting…' : 'Connect to Xero' }}
       </UiButton>
+      <p v-else class="text-sm text-slate-400">Not connected. Ask a manager to connect Xero.</p>
     </template>
 
     <template v-else>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-lg mb-4">
         <UiInput v-model="form.defaultRevenueAccountCode" label="Revenue account code" placeholder="200" />
         <UiInput v-model="form.defaultPaymentAccountCode" label="Payment account code (bank)" placeholder="e.g. 090" />
+        <UiInput v-if="form.syncBills" v-model="form.defaultExpenseAccountCode" label="Purchases account code (supplier invoices)" placeholder="310" />
       </div>
       <div class="flex flex-wrap gap-5 mb-4 text-sm text-slate-600 dark:text-slate-300">
         <label class="flex items-center gap-2"><input type="checkbox" v-model="form.syncInvoices" class="accent-brand-500" /> Push invoices</label>
         <label class="flex items-center gap-2"><input type="checkbox" v-model="form.syncPayments" class="accent-brand-500" /> Push payments</label>
+        <label class="flex items-center gap-2"><input type="checkbox" v-model="form.syncCreditNotes" class="accent-brand-500" /> Push credit notes</label>
+        <label class="flex items-center gap-2"><input type="checkbox" v-model="form.syncBills" class="accent-brand-500" /> Push supplier invoices (bills)</label>
         <label class="flex items-center gap-2"><input type="checkbox" v-model="form.autoSync" class="accent-brand-500" /> Automatic (on issue / on payment)</label>
       </div>
       <div class="flex items-center gap-2 mb-5">
-        <UiButton :disabled="saving" @click="saveSettings">{{ saving ? 'Saving…' : 'Save settings' }}</UiButton>
-        <UiButton variant="ghost" @click="disconnect"><Unlink class="w-4 h-4" /> Disconnect</UiButton>
+        <template v-if="canManage">
+          <UiButton :disabled="saving" @click="saveSettings">{{ saving ? 'Saving…' : 'Save settings' }}</UiButton>
+          <UiButton variant="ghost" @click="disconnect"><Unlink class="w-4 h-4" /> Disconnect</UiButton>
+        </template>
         <span class="text-xs text-slate-400 ml-auto">Last sync: {{ formatWhen(xero?.lastSyncAt ?? null) }}</span>
       </div>
 

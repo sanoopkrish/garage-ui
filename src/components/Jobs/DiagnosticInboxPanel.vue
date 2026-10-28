@@ -37,7 +37,12 @@ async function onFilePicked(event: Event) {
 async function confirm(jobId: string) {
   phase.value = 'confirming'
   try {
-    const result = await confirmDiagnosticReport(s3Key.value, jobId, analysis.value?.faultCodes)
+    const result = await confirmDiagnosticReport(s3Key.value, jobId, analysis.value?.faultCodes, {
+      summary: analysis.value?.summary,
+      faultCodeDescriptions: Object.fromEntries(
+        (analysis.value?.faultCodeDetails ?? []).filter((f) => f.description).map((f) => [f.code, f.description]),
+      ),
+    })
     ToastService.success(
       `Report attached${result.faultCodesCreated ? ` — ${result.faultCodesCreated} fault code${result.faultCodesCreated === 1 ? '' : 's'} recorded` : ''}`,
     )
@@ -61,7 +66,7 @@ function reset() {
   <GeneralSliderPanel :modelValue="modelValue" title="Diagnostic Inbox" @update:modelValue="(v: boolean) => { if (!v) reset(); emit('update:modelValue', v) }">
     <div class="space-y-5">
       <p class="text-sm text-slate-500 dark:text-slate-400">
-        Drop in a diagnostic report PDF (e.g. from the Autel tablet) — GarageOS reads the registration
+        Drop in a diagnostic report PDF (e.g. from the Autel tablet) — Cruise reads the registration
         and fault codes and suggests the matching job.
       </p>
 
@@ -89,7 +94,24 @@ function reset() {
             <span>Registrations: <strong>{{ analysis?.registrations.join(', ') || 'none found' }}</strong></span>
             <span v-if="analysis?.reportDate">Date: <strong>{{ analysis.reportDate }}</strong></span>
             <span v-if="analysis?.faultCodes.length">Fault codes: <strong class="font-mono">{{ analysis.faultCodes.join(', ') }}</strong></span>
+            <span v-if="analysis?.vehicle?.make">Vehicle: <strong>{{ [analysis.vehicle.make, analysis.vehicle.model].filter(Boolean).join(' ') }}</strong></span>
           </div>
+        </div>
+
+        <!-- AI enrichment (shown only when the AI diagnostics feature produced a result) -->
+        <div
+          v-if="analysis?.aiUsed && (analysis?.summary || analysis?.customerExplanation)"
+          class="rounded-lg border border-brand-200 dark:border-brand-500/30 bg-brand-50/50 dark:bg-brand-500/5 p-4 space-y-3"
+        >
+          <div v-if="analysis?.summary">
+            <p class="text-xs font-semibold uppercase tracking-wide text-brand-600 mb-1">AI summary (saved to internal notes on confirm)</p>
+            <p class="text-sm text-slate-700 dark:text-slate-200">{{ analysis.summary }}</p>
+          </div>
+          <div v-if="analysis?.customerExplanation">
+            <p class="text-xs font-semibold uppercase tracking-wide text-brand-600 mb-1">Customer-friendly explanation</p>
+            <p class="text-sm text-slate-700 dark:text-slate-200">{{ analysis.customerExplanation }}</p>
+          </div>
+          <p class="text-[11px] text-slate-400">AI-generated — review before relying on it.</p>
         </div>
 
         <div v-if="analysis?.suggestions.length">

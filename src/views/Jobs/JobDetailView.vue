@@ -7,15 +7,18 @@ import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, RotateCcw, Fuel } from 'lucide-vue-next'
+import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, RotateCcw, Fuel, Sparkles, Loader2 } from 'lucide-vue-next'
 import JobQuotesCard from '@/components/Jobs/JobQuotesCard.vue'
 import JobInvoiceCard from '@/components/Jobs/JobInvoiceCard.vue'
 import JobAssignmentsCard from '@/components/Jobs/JobAssignmentsCard.vue'
 import JobChecklistCard from '@/components/Jobs/JobChecklistCard.vue'
 import JobAttachmentsCard from '@/components/Jobs/JobAttachmentsCard.vue'
+import AiRewriteButton from '@/components/Ui/AiRewriteButton.vue'
+import { draftDamageNotes } from '@/api/ai.api'
+import { AIFeatureType, useAiFeatures } from '@/composables/useAiFeatures'
 import JobDiagnosticsCard from '@/components/Jobs/JobDiagnosticsCard.vue'
 import JobPartsCard from '@/components/Jobs/JobPartsCard.vue'
-import { createRework } from '@/api/dashboard.api'
+import { createRework } from '@/api/jobs.api'
 import { showTextareaDialog } from '@/utils/alert'
 import { useJobsStore } from '@/stores/jobs.store'
 import { useCrudPermissions, usePermissions } from '@/composables/usePermissions'
@@ -27,8 +30,10 @@ import type { Job } from '@/api/jobs.api'
 const route = useRoute()
 const router = useRouter()
 const jobsStore = useJobsStore()
-const { canUpdate } = useCrudPermissions('workshop', 'jobs')
+const { canUpdate, canCreate } = useCrudPermissions('workshop', 'jobs')
 const { hasPermission: canUpdateStatus } = usePermissions('menus.workshop.jobs.updateStatus')
+// Parts card reads /parts-orders, which needs stock access (e.g. Accounts has jobs.read but no stock)
+const { canRead: canReadParts } = useCrudPermissions('stock', 'inventory')
 
 const job = ref<Job | null>(null)
 const loading = ref(true)
@@ -165,6 +170,26 @@ const canCheckin = computed(() =>
 const fuelOptions = Object.values(FuelLevel).map((f) => ({ value: f, label: fuelLevelLabels[f] }))
 const roadTestOptions = Object.values(RoadTestStatus).map((r) => ({ value: r, label: roadTestLabels[r] }))
 
+// AI damage-notes draft from arrival/check-in photos (review before saving)
+const { hasFeature } = useAiFeatures()
+const draftingDamage = ref(false)
+
+async function draftDamage() {
+  if (!job.value) return
+  draftingDamage.value = true
+  try {
+    const result = await draftDamageNotes(job.value.id)
+    checkinForm.bodyworkNotes = checkinForm.bodyworkNotes.trim()
+      ? `${checkinForm.bodyworkNotes}\n${result.draft}`
+      : result.draft
+    ToastService.success(`Drafted from ${result.photosUsed} photo${result.photosUsed === 1 ? '' : 's'} — review before saving`)
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Could not draft damage notes')
+  } finally {
+    draftingDamage.value = false
+  }
+}
+
 function openCheckinModal() {
   checkinForm.fuelLevel = FuelLevel.HALF
   checkinForm.mileage = ''
@@ -235,7 +260,7 @@ onMounted(load)
       </button>
       <div class="flex items-center gap-2">
         <UiButton
-          v-if="canUpdate && job && ['complete', 'collected'].includes(job.status)"
+          v-if="canCreate && job && ['complete', 'collected'].includes(job.status)"
           variant="secondary"
           @click="raiseRework"
         >
@@ -308,7 +333,7 @@ onMounted(load)
         <JobAttachmentsCard :jobId="(route.params.id as string)" />
 
         <!-- Parts orders (Module 6) -->
-        <JobPartsCard :jobId="(route.params.id as string)" />
+        <JobPartsCard v-if="canReadParts" :jobId="(route.params.id as string)" />
 
         <!-- Diagnostics: fault codes + reports + ADAS certificate (Module 4) -->
         <JobDiagnosticsCard
@@ -401,7 +426,14 @@ onMounted(load)
 
           <div v-else class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Customer-facing / billable notes</label>
+              <div class="flex items-center justify-between mb-1">
+                <label class="block text-sm font-medium text-slate-600 dark:text-slate-300">Customer-facing / billable notes</label>
+                <AiRewriteButton
+                  :text="notesForm.customerNotes"
+                  context="Customer-facing notes on a vehicle repair job card"
+                  @accept="(draft) => (notesForm.customerNotes = draft)"
+                />
+              </div>
               <textarea v-model="notesForm.customerNotes" rows="3" class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400" />
             </div>
             <div>
@@ -423,7 +455,7 @@ onMounted(load)
         <JobQuotesCard :jobId="(route.params.id as string)" @changed="load" />
 
         <!-- Invoices (Module 9) -->
-        <JobInvoiceCard :jobId="(route.params.id as string)" @changed="load" />
+        <JobInvoiceCard :jobId="(route.params.id as string)" :customerId="job.customerId" @changed="load" />
 
         <!-- Timeline -->
         <div class="card">
@@ -471,7 +503,20 @@ onMounted(load)
           <UiInput v-model="checkinForm.mileage" label="Mileage" type="number" placeholder="42000" required :error="checkinErrors.mileage" />
         </div>
         <div>
-          <label class="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">Bodywork marks / damage</label>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-medium text-slate-600 dark:text-slate-300">Bodywork marks / damage</label>
+            <button
+              v-if="hasFeature(AIFeatureType.PHOTO_DAMAGE_NOTES)"
+              type="button"
+              :disabled="draftingDamage"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-brand-600 border border-brand-200 dark:border-brand-500/30 hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors disabled:opacity-50"
+              @click="draftDamage"
+            >
+              <Loader2 v-if="draftingDamage" class="w-3.5 h-3.5 animate-spin" />
+              <Sparkles v-else class="w-3.5 h-3.5" />
+              {{ draftingDamage ? 'Analysing photos…' : 'Draft from photos' }}
+            </button>
+          </div>
           <textarea v-model="checkinForm.bodyworkNotes" rows="2" placeholder="Scratch on rear bumper, stone chip on bonnet..." class="w-full text-sm border border-slate-200 dark:border-dark-border rounded-lg px-3 py-2 bg-white dark:bg-dark-surface text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-400" />
         </div>
         <UiInput v-model="checkinForm.sundryNotes" label="Sundry notes" placeholder="Items left in vehicle, etc." />

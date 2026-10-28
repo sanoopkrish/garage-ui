@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/attachment.enum.ts
-// Generated at: 2026-07-20T11:43:10.991Z
+// Generated at: 2026-10-05T12:06:00.406Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum AttachmentEntityType {
@@ -10,6 +10,10 @@ export enum AttachmentEntityType {
   QUOTE = 'quote',
   INVOICE = 'invoice',
   PARTS_ORDER = 'parts_order',
+  PURCHASE_ORDER = 'purchase_order',
+  GOODS_RECEIPT = 'goods_receipt',
+  SUPPLIER_INVOICE = 'supplier_invoice',
+  ASSET = 'asset',
 }
 
 export const AttachmentEntityTypeLabels: Record<AttachmentEntityType, string> = {
@@ -19,6 +23,10 @@ export const AttachmentEntityTypeLabels: Record<AttachmentEntityType, string> = 
   [AttachmentEntityType.QUOTE]: 'quote',
   [AttachmentEntityType.INVOICE]: 'invoice',
   [AttachmentEntityType.PARTS_ORDER]: 'parts_order',
+  [AttachmentEntityType.PURCHASE_ORDER]: 'purchase_order',
+  [AttachmentEntityType.GOODS_RECEIPT]: 'goods_receipt',
+  [AttachmentEntityType.SUPPLIER_INVOICE]: 'supplier_invoice',
+  [AttachmentEntityType.ASSET]: 'asset',
 };
 
 export const AttachmentEntityTypeValues = Object.values(AttachmentEntityType);
@@ -31,7 +39,10 @@ export enum AttachmentCategory {
   DIAGNOSTIC_REPORT = 'diagnostic_report',
   CERTIFICATE = 'certificate',
   SUPPLIER_INVOICE = 'supplier_invoice',
+  DELIVERY_NOTE = 'delivery_note',
   DOCUMENT = 'document',
+  ASSET_PHOTO = 'asset_photo',
+  ASSET_DOCUMENT = 'asset_document',
   OTHER = 'other',
 }
 
@@ -43,7 +54,10 @@ export const AttachmentCategoryLabels: Record<AttachmentCategory, string> = {
   [AttachmentCategory.DIAGNOSTIC_REPORT]: 'diagnostic_report',
   [AttachmentCategory.CERTIFICATE]: 'certificate',
   [AttachmentCategory.SUPPLIER_INVOICE]: 'supplier_invoice',
+  [AttachmentCategory.DELIVERY_NOTE]: 'delivery_note',
   [AttachmentCategory.DOCUMENT]: 'document',
+  [AttachmentCategory.ASSET_PHOTO]: 'asset_photo',
+  [AttachmentCategory.ASSET_DOCUMENT]: 'asset_document',
   [AttachmentCategory.OTHER]: 'other',
 };
 

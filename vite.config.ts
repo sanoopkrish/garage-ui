@@ -30,9 +30,9 @@ export default defineConfig({
       devOptions: { enabled: true, type: 'module' },
       includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'GarageOS Field',
-        short_name: 'GarageOS',
-        description: 'Field engineer companion for GarageOS workshop management',
+        name: 'Cruise Field',
+        short_name: 'Cruise',
+        description: 'Field engineer companion for Cruise workshop management',
         theme_color: '#f97316',
         background_color: '#0f172a',
         display: 'standalone',

@@ -28,6 +28,37 @@ export interface UpdateCompanyDto {
   companyTaxNumber?: string
 }
 
+/** Clocking & timesheet rules (Sprint 18) — the API always returns these fully resolved */
+export interface WorkingTimeSettings {
+  workingDays: number[]
+  shiftStart: string
+  shiftEnd: string
+  lateGraceMinutes: number
+  unpaidBreakMinutes: number
+  breakAfterHours: number
+  overtimeMode: string
+  overtimeDailyThresholdHours: number
+  autoClockOutAfterHours: number
+  workshopGeofence: { lat: number; lng: number; radiusMetres: number } | null
+  timesheetApproverTag: string
+  kioskEnabled: boolean
+}
+
+/** Purchasing feature switches (Sprint 23) — the API always returns these fully resolved */
+export interface ProcurementSettings {
+  enabled: boolean
+  approvalsEnabled: boolean
+  poApprovalThreshold: number
+  goodsReceiptsEnabled: boolean
+  billsEnabled: boolean
+  billPaymentsEnabled: boolean
+  billVarianceTolerance: number
+  billVariancePercent: number
+  aiInvoiceCapture: boolean
+  lowStockSuggestions: boolean
+  fieldReceiptCapture: boolean
+}
+
 export interface CompanySettings {
   timezone?: string
   dateFormat?: string
@@ -37,6 +68,18 @@ export interface CompanySettings {
   bankName?: string
   bankSortCode?: string
   bankAccountNumber?: string
+  storageChargeEnabled?: boolean
+  storageChargePerDay?: number
+  storageChargeAfterDays?: number
+  /** pre-fill for new trade (B2B) accounts; null = none */
+  defaultTradeCreditAmount?: number | null
+  workingTime?: WorkingTimeSettings
+  procurement?: Partial<ProcurementSettings>
+  passwordMinLength?: number
+  passwordRequireMixed?: boolean
+  idleTimeoutMinutes?: number
+  retentionPhotosMonths?: number
+  retentionJobsYears?: number
 }
 
 export interface NotificationSettings {

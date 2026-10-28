@@ -293,6 +293,11 @@ export interface InboxAnalysis {
   faultCodes: string[]
   reportDate: string | null
   suggestions: InboxSuggestion[]
+  aiUsed: boolean
+  summary?: string
+  customerExplanation?: string
+  faultCodeDetails?: { code: string; description: string; status?: string }[]
+  vehicle?: { make?: string; model?: string; vin?: string }
 }
 
 export async function analyseDiagnosticReport(s3Key: string): Promise<InboxAnalysis> {
@@ -304,8 +309,15 @@ export async function confirmDiagnosticReport(
   s3Key: string,
   jobId: string,
   faultCodes?: string[],
+  ai?: { summary?: string; faultCodeDescriptions?: Record<string, string> },
 ): Promise<{ attachmentId: string; faultCodesCreated: number }> {
-  const response = await api.post('/diagnostics/inbox/confirm', { s3Key, jobId, faultCodes })
+  const response = await api.post('/diagnostics/inbox/confirm', {
+    s3Key,
+    jobId,
+    faultCodes,
+    summary: ai?.summary,
+    faultCodeDescriptions: ai?.faultCodeDescriptions,
+  })
   return response.data?.data ?? response.data
 }
 
@@ -320,5 +332,11 @@ export async function downloadAdasCertificate(jobId: string): Promise<Blob> {
 
 export async function attachAdasCertificate(jobId: string): Promise<{ attachmentId: string; fileName: string }> {
   const response = await api.post(`/jobs/${jobId}/adas-certificate/attach`)
+  return response.data?.data ?? response.data
+}
+
+/** Module 11 — book a rework job linked to a completed/collected job */
+export async function createRework(jobId: string, complaintDescription: string): Promise<any> {
+  const response = await api.post(`/jobs/${jobId}/rework`, { complaintDescription })
   return response.data?.data ?? response.data
 }

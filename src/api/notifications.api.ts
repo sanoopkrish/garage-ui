@@ -15,6 +15,8 @@ export async function getNotifications(params?: {
   page?: number
   limit?: number
   unreadOnly?: boolean
+  read?: boolean
+  type?: string
 }): Promise<{ notifications: AppNotification[]; total: number }> {
   const endpoint = params?.unreadOnly === false ? '/notifications/all' : '/notifications'
   const response = await client.get(endpoint, { params })
