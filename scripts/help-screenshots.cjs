@@ -8,7 +8,7 @@
  *
  *   HELP_BASE_URL=https://localhost:5174 \
  *   HELP_ADMIN_EMAIL=admin@demo.com HELP_ADMIN_PASSWORD=... \
- *   HELP_FIELD_EMAIL=raj.patel@demo.com HELP_FIELD_PASSWORD=... \
+ *   HELP_FIELD_EMAIL=tony.smith@demo.com HELP_FIELD_PASSWORD=... \
  *   npm run help:screenshots
  *
  * Optional: HELP_ONLY=jobs-list,schedule  (comma list of image names to refresh)
@@ -23,8 +23,8 @@ const fs = require('fs')
 const BASE = process.env.HELP_BASE_URL || 'https://localhost:5174'
 const OUT = process.env.HELP_OUT || path.resolve(__dirname, '../../garage-api/src/help/content/images')
 const ADMIN = { email: process.env.HELP_ADMIN_EMAIL || 'admin@demo.com', password: process.env.HELP_ADMIN_PASSWORD || 'Admin@12345' }
-const FIELD = { email: process.env.HELP_FIELD_EMAIL || 'raj.patel@demo.com', password: process.env.HELP_FIELD_PASSWORD || 'Staff@12345' }
-const STAFF = { email: process.env.HELP_STAFF_EMAIL || 'christian.hughes@demo.com', password: process.env.HELP_STAFF_PASSWORD || 'Staff@12345' }
+const FIELD = { email: process.env.HELP_FIELD_EMAIL || 'tony.smith@demo.com', password: process.env.HELP_FIELD_PASSWORD || 'Staff@12345' }
+const STAFF = { email: process.env.HELP_STAFF_EMAIL || 'christian.jay@demo.com', password: process.env.HELP_STAFF_PASSWORD || 'Staff@12345' }
 const ONLY = process.env.HELP_ONLY ? new Set(process.env.HELP_ONLY.split(',').map((s) => s.trim())) : null
 
 // Demo record ids used for detail pages
