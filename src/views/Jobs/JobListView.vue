@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiPageHeader from '@/components/Ui/UiPageHeader.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
@@ -9,6 +9,7 @@ import UiSearchInput from '@/components/Ui/UiSearchInput.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
+import UiSearchSelect from '@/components/Ui/UiSearchSelect.vue'
 import { Plus, Eye, Trash2, ChevronLeft, ChevronRight, RotateCcw, FileScan } from 'lucide-vue-next'
 import DiagnosticInboxPanel from '@/components/Jobs/DiagnosticInboxPanel.vue'
 import { useJobsStore } from '@/stores/jobs.store'
@@ -74,6 +75,8 @@ const submitting = ref(false)
 
 const customerOptions = ref<{ value: string; label: string }[]>([])
 const vehicleOptions = ref<{ value: string; label: string }[]>([])
+const customersLoading = ref(false)
+const vehiclesLoading = ref(false)
 
 const form = reactive({
   customerId: '',
@@ -85,29 +88,48 @@ const form = reactive({
 
 const formErrors = reactive({ customerId: '', vehicleId: '', description: '' })
 
-async function loadCustomerOptions() {
+/** Server-side search by customer name / business name (the list can be long). */
+let customerSearchSeq = 0
+async function loadCustomerOptions(search = '') {
+  const seq = ++customerSearchSeq
+  customersLoading.value = true
   try {
-    const response = await getCustomers({ pageSize: 100 })
+    const response = await getCustomers({ search: search || undefined, pageSize: 50 })
+    if (seq !== customerSearchSeq) return // a newer search has superseded this response
     customerOptions.value = response.items.map((c) => ({
       value: c.id,
       label: c.businessName ? `${c.businessName} (${c.name})` : c.name,
     }))
   } catch {
-    ToastService.error('Failed to load customers')
+    if (seq === customerSearchSeq) ToastService.error('Failed to load customers')
+  } finally {
+    if (seq === customerSearchSeq) customersLoading.value = false
   }
 }
 
-async function loadVehicleOptions() {
+/** Only the selected customer's vehicles are offered. */
+async function loadVehicleOptions(customerId: string) {
+  vehicleOptions.value = []
+  if (!customerId) return
+  vehiclesLoading.value = true
   try {
-    const response = await getVehicles({ pageSize: 200 })
+    const response = await getVehicles({ customerId, pageSize: 200 })
     vehicleOptions.value = response.items.map((v) => ({
       value: v.id,
       label: `${v.registration} — ${[v.year, v.make, v.model].filter(Boolean).join(' ') || 'Unknown'}`,
     }))
   } catch {
     ToastService.error('Failed to load vehicles')
+  } finally {
+    vehiclesLoading.value = false
   }
 }
+
+watch(() => form.customerId, (customerId) => {
+  form.vehicleId = ''
+  formErrors.vehicleId = ''
+  loadVehicleOptions(customerId)
+})
 
 function openCreateModal() {
   form.customerId = ''
@@ -118,9 +140,9 @@ function openCreateModal() {
   formErrors.customerId = ''
   formErrors.vehicleId = ''
   formErrors.description = ''
+  vehicleOptions.value = []
   showModal.value = true
-  if (customerOptions.value.length === 0) loadCustomerOptions()
-  if (vehicleOptions.value.length === 0) loadVehicleOptions()
+  loadCustomerOptions()
 }
 
 async function submitForm() {
@@ -294,8 +316,31 @@ onMounted(() => {
     <!-- New Job Modal -->
     <UiModal :open="showModal" title="New Job" @close="showModal = false">
       <form @submit.prevent="submitForm" class="flex flex-col gap-4">
-        <UiSelect v-model="form.customerId" label="Customer (bill-to)" :options="customerOptions" required :error="formErrors.customerId" />
-        <UiSelect v-model="form.vehicleId" label="Vehicle" :options="vehicleOptions" required :error="formErrors.vehicleId" />
+        <UiSearchSelect
+          v-model="form.customerId"
+          label="Customer (bill-to)"
+          :options="customerOptions"
+          :loading="customersLoading"
+          remote
+          placeholder="Search customer…"
+          search-placeholder="Type a name or business…"
+          empty-text="No customers match."
+          required
+          :error="formErrors.customerId"
+          @search="loadCustomerOptions"
+        />
+        <UiSearchSelect
+          v-model="form.vehicleId"
+          label="Vehicle"
+          :options="vehicleOptions"
+          :loading="vehiclesLoading"
+          :disabled="!form.customerId"
+          :placeholder="form.customerId ? 'Select vehicle…' : 'Select a customer first'"
+          search-placeholder="Registration, make or model…"
+          empty-text="This customer has no vehicles yet."
+          required
+          :error="formErrors.vehicleId"
+        />
         <UiInput v-model="form.description" label="Job Description" placeholder="e.g. Full Service + MOT" required :error="formErrors.description" />
         <div class="grid grid-cols-2 gap-4">
           <UiSelect
