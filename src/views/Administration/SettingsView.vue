@@ -3,8 +3,10 @@ import { computed, ref, watch, onMounted } from 'vue'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
-import { Building2, CreditCard, Bell, Satellite, ShieldCheck, Clock, ShoppingCart, LayoutDashboard } from 'lucide-vue-next'
+import { Building2, CreditCard, Bell, Satellite, ShieldCheck, Clock, ShoppingCart, LayoutDashboard, Wrench } from 'lucide-vue-next'
 import WorkingTimeSettings from '@/components/Settings/WorkingTimeSettings.vue'
+import WorkshopSettings from '@/components/Settings/WorkshopSettings.vue'
+import InvoiceAttachmentsSettings from '@/components/Settings/InvoiceAttachmentsSettings.vue'
 import ProcurementSettings from '@/components/Settings/ProcurementSettings.vue'
 import DashboardDefaultsSettings from '@/components/Settings/DashboardDefaultsSettings.vue'
 import { useCompanyStore } from '@/stores/company.store'
@@ -24,6 +26,7 @@ const { hasPermission: canSeeDashboard } = usePermissions('menus.administration.
 const tabs = computed(() => [
   ...(canSeeBusiness.value ? [{ key: 'business', label: 'Business', icon: Building2 }] : []),
   ...(canSeeBilling.value ? [{ key: 'billing', label: 'Billing / VAT', icon: CreditCard }] : []),
+  ...(canSeeBusiness.value ? [{ key: 'workshop', label: 'Workshop', icon: Wrench }] : []),
   ...(canSeeBusiness.value ? [{ key: 'working-time', label: 'Working time', icon: Clock }] : []),
   ...(canSeeBusiness.value ? [{ key: 'purchasing', label: 'Purchasing', icon: ShoppingCart }] : []),
   ...(canSeeDashboard.value ? [{ key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
@@ -462,10 +465,19 @@ async function saveNotifications() {
                 <span v-else>Save Changes</span>
               </UiButton>
             </div>
+
+            <!-- Sprint 26 — invoice email attachments (saves on its own) -->
+            <div class="pt-4 border-t border-slate-100 dark:border-dark-border">
+              <InvoiceAttachmentsSettings />
+            </div>
           </div>
         </template>
 
         <!-- Notifications -->
+        <template v-else-if="activeTab === 'workshop'">
+          <WorkshopSettings />
+        </template>
+
         <template v-else-if="activeTab === 'working-time'">
           <WorkingTimeSettings />
         </template>

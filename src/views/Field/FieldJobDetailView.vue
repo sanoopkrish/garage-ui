@@ -4,18 +4,21 @@ import { useRoute } from 'vue-router'
 import FieldLayout from '@/components/Layout/FieldLayout.vue'
 import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
+import UiModal from '@/components/Ui/UiModal.vue'
 import {
   Car, MapPin, Phone, Play, Square, Plus, Camera, CheckCircle2, Loader2, Trash2,
+  FileText, Navigation, MessageSquare, Send, CalendarDays, KeyRound,
 } from 'lucide-vue-next'
 import {
   getJob, updateJobStatus,
   getChecklist, addChecklistItem, updateChecklistItem, deleteChecklistItem,
   getRunningTimer, startTimer, stopTimer,
-  type Job, type ChecklistItem,
+  getJobNotes, addJobNote, navigateUrl,
+  type Job, type ChecklistItem, type JobNote, type StopTimerOptions,
 } from '@/api/jobs.api'
 import { getCustomer, type Customer } from '@/api/customers.api'
 import { uploadTemporary, attachToEntity, listAttachments, getViewUrl, deleteAttachment, type Attachment } from '@/api/files.api'
-import { JobStatus } from '@/types/generated/enums/job'
+import { JobStatus, NoteSource, VisitStatus, WorkLocation } from '@/types/generated/enums/job'
 import { jobStatusLabels, jobStatusBadgeVariant } from '@/utils/jobStatus'
 import { useAuthStore } from '@/stores/auth'
 import { ToastService } from '@/services/toast.service'
@@ -57,12 +60,103 @@ function transitionLabel(status: JobStatus): string {
   return FIELD_STATUS_LABELS[status] ?? jobStatusLabels[status]
 }
 
+/** Sprint 26 — on-site jobs navigate to the site address; workshop jobs fall back to the customer's address */
+const isOnSite = computed(() => job.value?.workLocation === WorkLocation.ON_SITE)
 const mapsUrl = computed(() => {
-  const a = customer.value?.billingAddress
-  if (!a) return null
-  const parts = [a.street, a.city, a.postcode].filter(Boolean).join(', ')
-  return parts ? `https://maps.google.com/?q=${encodeURIComponent(parts)}` : null
+  if (isOnSite.value && job.value?.siteAddress) return navigateUrl(job.value.siteAddress)
+  return navigateUrl(customer.value?.billingAddress ?? null)
 })
+
+// ---- Sprint 26: visits (this engineer's planned days on the job) ----
+const todayIso = new Date().toISOString().slice(0, 10)
+const myVisits = computed(() =>
+  (job.value?.visits ?? []).filter((v) => v.assignmentId === myAssignment.value?.assignmentId).sort((a, b) => a.visitDate.localeCompare(b.visitDate)),
+)
+const todayVisitIndex = computed(() => myVisits.value.findIndex((v) => v.visitDate === todayIso))
+const dayLabel = computed(() => {
+  if (myVisits.value.length < 2) return null
+  const idx = todayVisitIndex.value >= 0 ? todayVisitIndex.value : myVisits.value.findIndex((v) => v.visitDate > todayIso)
+  return idx >= 0 ? `Day ${idx + 1} of ${myVisits.value.length}` : `${myVisits.value.length} days planned`
+})
+const nextVisit = computed(() => myVisits.value.find((v) => v.visitDate > todayIso && v.status === VisitStatus.PLANNED) ?? null)
+
+function formatDay(iso: string): string {
+  return new Date(iso + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+// ---- Sprint 26: notes ----
+const notes = ref<JobNote[]>([])
+const noteDraft = ref('')
+const postingNote = ref(false)
+
+async function postNote() {
+  const body = noteDraft.value.trim()
+  if (!body || postingNote.value) return
+  postingNote.value = true
+  try {
+    notes.value.push(await addJobNote(jobId, body))
+    noteDraft.value = ''
+    ToastService.success('Note added — the office has been told')
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Could not add the note')
+  } finally {
+    postingNote.value = false
+  }
+}
+
+function noteWhen(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
+// ---- Sprint 26: diagnostic reports (Autel PDF etc.) ----
+const reports = ref<Attachment[]>([])
+const reportInput = ref<HTMLInputElement | null>(null)
+const uploadingReport = ref(false)
+
+async function onReportPicked(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  uploadingReport.value = true
+  try {
+    const s3Key = await uploadTemporary(file)
+    const attachment = await attachToEntity(s3Key, 'job', jobId, 'diagnostic_report')
+    reports.value.unshift(attachment)
+    ToastService.success('Report attached — the office has been told')
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Upload failed — check storage configuration')
+  } finally {
+    uploadingReport.value = false
+    if (reportInput.value) reportInput.value.value = ''
+  }
+}
+
+async function openReport(report: Attachment) {
+  try {
+    window.open(await getViewUrl(report.s3Key, report.contentType), '_blank')
+  } catch {
+    ToastService.error('Could not open the report')
+  }
+}
+
+const deletingReportId = ref<string | null>(null)
+async function removeReport(report: Attachment) {
+  const result = await showConfirmDialog(`"${report.fileName}" will be permanently deleted from the job.`)
+  if (!result.isConfirmed) return
+  deletingReportId.value = report.id
+  try {
+    await deleteAttachment(report.id)
+    reports.value = reports.value.filter((r) => r.id !== report.id)
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Failed to delete the report')
+  } finally {
+    deletingReportId.value = null
+  }
+}
+
+function formatSize(bytes: number): string {
+  if (!bytes) return ''
+  return bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`
+}
 
 // ---- Timer ----
 const timerAssignmentId = ref<string | null>(null)
@@ -80,21 +174,51 @@ const elapsed = computed(() => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 })
 
+// Sprint 26 — stopping opens a sheet: done for today / coming back / just pausing
+const stopSheetOpen = ref(false)
+const stopNotes = ref('')
+const returnDate = ref('')
+
 async function toggleTimer() {
   if (!myAssignment.value || timerBusy.value) return
+  if (timerStartedAt.value) {
+    stopNotes.value = ''
+    returnDate.value = ''
+    stopSheetOpen.value = true
+    return
+  }
   timerBusy.value = true
   try {
-    if (timerStartedAt.value) {
-      await stopTimer(jobId, timerAssignmentId.value ?? myAssignment.value.assignmentId)
-      timerStartedAt.value = null
-      timerAssignmentId.value = null
-      ToastService.success('Time logged against the job')
-      job.value = await getJob(jobId)
-    } else {
-      await startTimer(jobId, myAssignment.value.assignmentId)
-      timerAssignmentId.value = myAssignment.value.assignmentId
-      timerStartedAt.value = new Date()
-    }
+    await startTimer(jobId, myAssignment.value.assignmentId)
+    timerAssignmentId.value = myAssignment.value.assignmentId
+    timerStartedAt.value = new Date()
+    job.value = await getJob(jobId)
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Timer action failed')
+  } finally {
+    timerBusy.value = false
+  }
+}
+
+async function finishStop(choice: 'done' | 'return' | 'pause') {
+  if (!myAssignment.value || timerBusy.value) return
+  const options: StopTimerOptions = { notes: stopNotes.value.trim() || undefined }
+  if (choice === 'done') options.finishedForToday = true
+  if (choice === 'return') {
+    options.finishedForToday = true
+    if (returnDate.value) options.returnDate = returnDate.value
+    else options.returnTomorrow = true
+  }
+  timerBusy.value = true
+  try {
+    await stopTimer(jobId, timerAssignmentId.value ?? myAssignment.value.assignmentId, options)
+    timerStartedAt.value = null
+    timerAssignmentId.value = null
+    stopSheetOpen.value = false
+    ToastService.success(
+      choice === 'return' ? 'Time logged — your next visit is planned' : choice === 'done' ? 'Time logged — finished for today' : 'Time logged',
+    )
+    job.value = await getJob(jobId)
   } catch (e: any) {
     ToastService.error(e.response?.data?.message ?? 'Timer action failed')
   } finally {
@@ -225,6 +349,9 @@ onMounted(async () => {
         getViewUrl(p.s3Key, p.contentType).then((u) => { photoUrls.value[p.id] = u }).catch(() => {})
       }
     }).catch(() => {})
+    // Sprint 26
+    listAttachments('job', jobId, 'diagnostic_report').then((list) => { reports.value = list }).catch(() => {})
+    getJobNotes(jobId).then((list) => { notes.value = list }).catch(() => {})
   } finally {
     loading.value = false
   }
@@ -266,7 +393,7 @@ onBeforeUnmount(() => {
             <Phone class="w-4 h-4" /> {{ customer.phone }}
           </a>
           <a
-            v-if="mapsUrl"
+            v-if="mapsUrl && !isOnSite"
             :href="mapsUrl"
             target="_blank"
             rel="noopener"
@@ -274,6 +401,32 @@ onBeforeUnmount(() => {
           >
             <MapPin class="w-4 h-4" /> Directions
           </a>
+        </div>
+
+        <!-- Sprint 26 — site address for on-site work -->
+        <div v-if="isOnSite && job.siteAddress" class="mt-3 p-3 rounded-lg bg-sky-50 dark:bg-sky-900/15 text-sm">
+          <p class="text-xs uppercase tracking-wide text-sky-700 dark:text-sky-300 mb-1 flex items-center gap-1"><MapPin class="w-3.5 h-3.5" /> On-site</p>
+          <p class="text-slate-800 dark:text-slate-100">{{ [job.siteAddress.street, job.siteAddress.street2, job.siteAddress.city].filter(Boolean).join(', ') }}</p>
+          <p class="font-mono font-semibold text-slate-800 dark:text-slate-100">{{ job.siteAddress.postcode }}</p>
+          <p v-if="job.siteAddress.contactName || job.siteAddress.contactPhone" class="text-slate-600 dark:text-slate-300 mt-1">
+            {{ job.siteAddress.contactName }}
+            <a v-if="job.siteAddress.contactPhone" :href="`tel:${job.siteAddress.contactPhone}`" class="text-brand-600 dark:text-brand-400 font-medium ml-1">{{ job.siteAddress.contactPhone }}</a>
+          </p>
+          <p v-if="job.siteAddress.accessNotes" class="text-slate-600 dark:text-slate-300 mt-1 flex items-start gap-1"><KeyRound class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />{{ job.siteAddress.accessNotes }}</p>
+          <a
+            v-if="mapsUrl"
+            :href="mapsUrl"
+            target="_blank"
+            rel="noopener"
+            class="mt-2 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand-500 text-white text-sm font-medium"
+          ><Navigation class="w-4 h-4" /> Navigate</a>
+        </div>
+
+        <!-- Sprint 26 — planned days -->
+        <div v-if="myVisits.length" class="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <CalendarDays class="w-3.5 h-3.5" />
+          <span v-if="dayLabel" class="font-medium text-slate-700 dark:text-slate-200">{{ dayLabel }}</span>
+          <span v-if="nextVisit">· next visit {{ formatDay(nextVisit.visitDate) }}</span>
         </div>
       </div>
 
@@ -412,11 +565,103 @@ onBeforeUnmount(() => {
         <p v-else class="text-sm text-slate-400">No work-in-progress photos yet</p>
       </div>
 
+      <!-- Sprint 26 — diagnostic reports (Autel PDF, photos of a printout) -->
+      <div class="card !p-4 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold text-slate-800 dark:text-white">Reports</h2>
+          <label
+            :class="[
+              'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 dark:bg-white/10 text-white text-sm font-medium cursor-pointer transition-colors',
+              uploadingReport ? 'opacity-60 pointer-events-none' : '',
+            ]"
+          >
+            <Loader2 v-if="uploadingReport" class="w-4 h-4 animate-spin" />
+            <FileText v-else class="w-4 h-4" />
+            {{ uploadingReport ? 'Uploading…' : 'Attach report' }}
+            <input ref="reportInput" type="file" accept="application/pdf,image/*" class="hidden" @change="onReportPicked" />
+          </label>
+        </div>
+        <ul v-if="reports.length" class="divide-y divide-slate-100 dark:divide-dark-border">
+          <li v-for="r in reports" :key="r.id" class="flex items-center gap-3 py-2">
+            <FileText class="w-5 h-5 text-brand-500 flex-shrink-0" />
+            <button class="flex-1 min-w-0 text-left" @click="openReport(r)">
+              <p class="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{{ r.fileName }}</p>
+              <p class="text-xs text-slate-400">{{ formatSize(r.fileSize) }} · {{ new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) }}</p>
+            </button>
+            <button
+              type="button"
+              :disabled="deletingReportId === r.id"
+              @click="removeReport(r)"
+              class="p-1.5 text-slate-300 hover:text-red-500"
+              aria-label="Delete report"
+            >
+              <Loader2 v-if="deletingReportId === r.id" class="w-4 h-4 animate-spin" />
+              <Trash2 v-else class="w-4 h-4" />
+            </button>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-slate-400">No reports attached. Attach the diagnostic PDF here instead of emailing it to the office.</p>
+      </div>
+
+      <!-- Sprint 26 — job notes -->
+      <div class="card !p-4 mb-4">
+        <h2 class="font-semibold text-slate-800 dark:text-white mb-3 flex items-center gap-2"><MessageSquare class="w-4 h-4 text-brand-500" /> Notes</h2>
+        <ul v-if="notes.length" class="space-y-2 mb-3">
+          <li v-for="n in notes" :key="n.id" class="rounded-lg px-3 py-2 text-sm bg-slate-50 dark:bg-white/5">
+            <div class="flex items-center gap-2 mb-0.5 text-xs">
+              <span class="font-medium text-slate-700 dark:text-slate-200">{{ n.authorName }}</span>
+              <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-medium', n.source === NoteSource.FIELD ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-slate-200/70 text-slate-600 dark:bg-white/10 dark:text-slate-300']">{{ n.source === NoteSource.FIELD ? 'Field' : 'Office' }}</span>
+              <span class="ml-auto text-slate-400">{{ noteWhen(n.createdAt) }}</span>
+            </div>
+            <p class="text-slate-600 dark:text-slate-300 whitespace-pre-wrap">{{ n.body }}</p>
+          </li>
+        </ul>
+        <p v-else class="text-sm text-slate-400 mb-3">No notes yet.</p>
+        <div class="flex gap-2">
+          <textarea
+            v-model="noteDraft"
+            rows="2"
+            maxlength="2000"
+            placeholder="Add a note for the office…"
+            class="flex-1 text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <UiButton :disabled="!noteDraft.trim() || postingNote" @click="postNote">
+            <Loader2 v-if="postingNote" class="w-4 h-4 animate-spin" />
+            <Send v-else class="w-4 h-4" />
+          </UiButton>
+        </div>
+      </div>
+
       <!-- Internal notes -->
       <div v-if="job.internalNotes" class="card !p-4 mb-4">
         <h2 class="font-semibold text-slate-800 dark:text-white mb-2">Internal notes</h2>
         <p class="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{{ job.internalNotes }}</p>
       </div>
+
+      <!-- Sprint 26 — stop-timer sheet -->
+      <UiModal :open="stopSheetOpen" title="Stop timer" @close="stopSheetOpen = false">
+        <div class="space-y-3">
+          <p class="text-sm text-slate-600 dark:text-slate-300">{{ elapsed }} on site today. Finished on this job for today?</p>
+          <input
+            v-model="stopNotes"
+            type="text"
+            maxlength="500"
+            placeholder="What was done (optional)"
+            class="w-full text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+          <button :disabled="timerBusy" @click="finishStop('done')" class="w-full py-3 rounded-xl bg-brand-500 text-white font-semibold disabled:opacity-60">Yes — done for today</button>
+          <div class="rounded-xl border border-slate-200 dark:border-dark-border p-3 space-y-2">
+            <button :disabled="timerBusy" @click="finishStop('return')" class="w-full py-3 rounded-xl bg-slate-700 dark:bg-white/10 text-white font-semibold disabled:opacity-60">
+              Yes — coming back {{ returnDate ? formatDay(returnDate) : 'tomorrow' }}
+            </button>
+            <label class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              Or pick the day:
+              <input v-model="returnDate" type="date" :min="todayIso" class="text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-2 py-1 text-slate-700 dark:text-slate-200" />
+            </label>
+          </div>
+          <button :disabled="timerBusy" @click="finishStop('pause')" class="w-full py-3 rounded-xl text-slate-600 dark:text-slate-300 font-medium disabled:opacity-60">No — just pausing</button>
+        </div>
+      </UiModal>
 
       <!-- Status advance (in repair → quality check → complete) -->
       <div v-if="fieldTransitions.length" class="fixed bottom-0 inset-x-0 z-20 p-4 bg-gradient-to-t from-slate-50 dark:from-dark-bg via-slate-50/90 dark:via-dark-bg/90 to-transparent">

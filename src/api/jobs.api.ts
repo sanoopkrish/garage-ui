@@ -1,5 +1,5 @@
 import api from '@/api/client'
-import { JobStatus, FuelLevel, KeyStatus, RoadTestStatus } from '@/types/generated/enums/job'
+import { JobStatus, FuelLevel, KeyStatus, RoadTestStatus, WorkLocation, VisitStatus, NoteSource } from '@/types/generated/enums/job'
 
 export interface JobCheckin {
   id: string
@@ -33,11 +33,43 @@ export interface JobTechnician {
   timeEntries?: { id: string; hours: number; workDate: string; notes: string | null }[]
 }
 
+/** Sprint 26 — where an on-site job happens */
+export interface SiteAddress {
+  street: string
+  street2?: string
+  city: string
+  postcode: string
+  country?: string
+  contactName?: string
+  contactPhone?: string
+  accessNotes?: string
+}
+
+/** Sprint 26 — one technician-day on the job */
+export interface JobVisit {
+  id: string
+  assignmentId: string
+  technicianId: string
+  technicianName: string
+  visitDate: string
+  sequence: number | null
+  status: VisitStatus
+  hours: number
+  needsReview: boolean
+}
+
 export interface Job {
   id: string
   jobNumber: string
   description: string
   status: JobStatus
+  // Sprint 26
+  workLocation: WorkLocation
+  siteAddress?: SiteAddress | null
+  siteLat?: number | null
+  siteLng?: number | null
+  quoteRequired: boolean
+  visits?: JobVisit[]
   customerId: string
   customerName?: string
   vehicleId: string
@@ -69,6 +101,10 @@ export interface CreateJobDto {
   vehicleId: string
   description: string
   status?: JobStatus
+  // Sprint 26
+  workLocation?: WorkLocation
+  siteAddress?: SiteAddress | null
+  quoteRequired?: boolean
   bookedAt?: string
   dueDate?: string
   customerNotes?: string
@@ -110,6 +146,9 @@ export async function getJobs(params?: {
   vehicleId?: string
   technicianId?: string
   isRework?: boolean
+  /** Sprint 26 */
+  workLocation?: WorkLocation
+  visitDate?: string
   page?: number
   pageSize?: number
 }): Promise<PaginatedJobs> {
@@ -154,9 +193,61 @@ export async function deleteJob(id: string): Promise<void> {
 
 // ===== Module 7: assignments & schedule =====
 
-export async function assignTechnician(jobId: string, technicianId: string, scheduledDate?: string): Promise<Job> {
-  const response = await api.post(`/jobs/${jobId}/assignments`, { technicianId, scheduledDate })
+export async function assignTechnician(jobId: string, technicianId: string, scheduledDate?: string, days = 1): Promise<Job> {
+  const response = await api.post(`/jobs/${jobId}/assignments`, { technicianId, scheduledDate, days })
   return response.data?.data ?? response.data
+}
+
+// ── Sprint 26: visits (technician-days) ──────────────────────────────────────
+
+/** A visit as the day/planner endpoints return it (job context included) */
+export interface VisitSummary extends JobVisit {
+  jobId: string
+  jobNumber: string
+  jobDescription: string
+  workLocation: WorkLocation
+  postcode?: string | null
+  customerName?: string
+  vehicleRegistration?: string
+}
+
+export async function getJobVisits(jobId: string): Promise<VisitSummary[]> {
+  const response = await api.get(`/jobs/${jobId}/visits`)
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
+}
+
+export async function createVisit(jobId: string, assignmentId: string, visitDate: string): Promise<VisitSummary> {
+  const response = await api.post(`/jobs/${jobId}/visits`, { assignmentId, visitDate })
+  return response.data?.data ?? response.data
+}
+
+export async function updateVisit(jobId: string, visitId: string, dto: { visitDate?: string; sequence?: number; status?: VisitStatus }): Promise<VisitSummary> {
+  const response = await api.patch(`/jobs/${jobId}/visits/${visitId}`, dto)
+  return response.data?.data ?? response.data
+}
+
+export async function deleteVisit(jobId: string, visitId: string): Promise<void> {
+  await api.delete(`/jobs/${jobId}/visits/${visitId}`)
+}
+
+export async function reorderVisits(visitIds: string[]): Promise<VisitSummary[]> {
+  const response = await api.post('/visits/reorder', { visitIds })
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
+}
+
+/** Technicians get their own day; the office may pass a technicianId */
+export async function getVisitsForDay(date: string, technicianId?: string): Promise<VisitSummary[]> {
+  const response = await api.get('/visits/day', { params: { date, technicianId } })
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
+}
+
+export async function getUpcomingVisits(from?: string): Promise<VisitSummary[]> {
+  const response = await api.get('/visits/upcoming', { params: { from } })
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
 }
 
 export async function unassignTechnician(jobId: string, assignmentId: string): Promise<void> {
@@ -239,8 +330,76 @@ export async function startTimer(jobId: string, assignmentId: string): Promise<v
   await api.post(`/jobs/${jobId}/assignments/${assignmentId}/timer/start`)
 }
 
-export async function stopTimer(jobId: string, assignmentId: string, notes?: string): Promise<void> {
-  await api.post(`/jobs/${jobId}/assignments/${assignmentId}/timer/stop`, { notes })
+// ── Sprint 26: job notes (append-only feed) ──────────────────────────────────
+
+export interface JobNote {
+  id: string
+  jobId: string
+  authorId: string
+  authorName: string
+  body: string
+  source: NoteSource
+  createdAt: string
+}
+
+export async function getJobNotes(jobId: string): Promise<JobNote[]> {
+  const response = await api.get(`/jobs/${jobId}/notes`)
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
+}
+
+export async function addJobNote(jobId: string, body: string): Promise<JobNote> {
+  const response = await api.post(`/jobs/${jobId}/notes`, { body })
+  return response.data?.data ?? response.data
+}
+
+// ── Sprint 26: daily route ───────────────────────────────────────────────────
+
+export interface RouteStop extends VisitSummary {
+  address?: string | null
+  lat?: number | null
+  lng?: number | null
+  legKm?: number | null
+}
+
+export interface DailyRoute {
+  date: string
+  technicianId: string
+  start: { label: string; address: string | null; lat: number | null; lng: number | null }
+  stops: RouteStop[]
+  mapsUrl: string | null
+  mapsUrlTruncated: boolean
+  totalKm: number
+}
+
+export async function getMyRoute(date?: string): Promise<DailyRoute> {
+  const response = await api.get('/routes/my-day', { params: { date } })
+  return response.data?.data ?? response.data
+}
+
+export async function getTechnicianRoute(technicianId: string, date?: string): Promise<DailyRoute> {
+  const response = await api.get('/routes/day', { params: { technicianId, date } })
+  return response.data?.data ?? response.data
+}
+
+/** Google / Apple Maps directions link for one address — opens the native app on a phone */
+export function navigateUrl(address: { street?: string; city?: string; postcode?: string } | null | undefined): string | null {
+  if (!address) return null
+  const q = [address.street, address.city, address.postcode].filter(Boolean).join(', ')
+  return q ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}` : null
+}
+
+/** Sprint 26 — the stop sheet answers ride along with the notes */
+export interface StopTimerOptions {
+  notes?: string
+  finishedForToday?: boolean
+  returnTomorrow?: boolean
+  returnDate?: string
+}
+
+export async function stopTimer(jobId: string, assignmentId: string, options?: string | StopTimerOptions): Promise<void> {
+  const body = typeof options === 'string' ? { notes: options } : (options ?? {})
+  await api.post(`/jobs/${jobId}/assignments/${assignmentId}/timer/stop`, body)
 }
 
 // ---- Module 4: fault codes + diagnostics + ADAS certificate ----

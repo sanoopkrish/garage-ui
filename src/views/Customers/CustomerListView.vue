@@ -79,7 +79,15 @@ const form = reactive({
   tradeCreditAmount: '',
   tradeCreditVatInclusive: true,
   notes: '',
+  /** Sprint 26 — 'inherit' = company default */
+  quoteRequired: 'inherit' as 'inherit' | 'yes' | 'no',
 })
+
+const quoteRequiredOptions = [
+  { value: 'inherit', label: 'Use company default' },
+  { value: 'yes', label: 'Always quote first' },
+  { value: 'no', label: 'Never needs a quote' },
+]
 
 const formErrors = reactive({ name: '' })
 
@@ -96,6 +104,7 @@ function resetForm() {
   form.tradeCreditAmount = ''
   form.tradeCreditVatInclusive = true
   form.notes = ''
+  form.quoteRequired = 'inherit'
   formErrors.name = ''
 }
 
@@ -120,6 +129,7 @@ function openEditModal(customer: Customer) {
   form.tradeCreditAmount = customer.tradeCreditAmount != null ? String(customer.tradeCreditAmount) : ''
   form.tradeCreditVatInclusive = customer.tradeCreditVatInclusive ?? true
   form.notes = customer.notes ?? ''
+  form.quoteRequired = customer.quoteRequired == null ? 'inherit' : customer.quoteRequired ? 'yes' : 'no'
   showModal.value = true
 }
 
@@ -147,6 +157,7 @@ function buildDto(): CreateCustomerDto {
     paymentTermsDays: isB2b && form.paymentTermsDays !== '' ? Number(form.paymentTermsDays) : undefined,
     poRequired: isB2b ? form.poRequired : undefined,
     notes: form.notes.trim() || undefined,
+    quoteRequired: form.quoteRequired === 'inherit' ? null : form.quoteRequired === 'yes',
   }
 }
 
@@ -335,6 +346,7 @@ onMounted(() => {
           <UiInput v-model="form.email" label="Email" type="email" placeholder="customer@email.com" />
           <UiInput v-model="form.phone" label="Phone" placeholder="+44 7700 000000" />
         </div>
+        <UiSelect v-model="form.quoteRequired" label="Quote before work starts" :options="quoteRequiredOptions" />
         <UiInput v-model="form.notes" label="Notes" placeholder="Optional notes" />
       </form>
       <template #footer>

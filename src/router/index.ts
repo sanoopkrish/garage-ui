@@ -61,6 +61,12 @@ const routes = [
     meta: { title: 'Job', requiresAuth: true, permissionKey: 'menus.workshop.jobs.read' },
   },
   {
+    path: '/field/route',
+    name: 'field-route',
+    component: () => import('@/views/Field/FieldRouteView.vue'),
+    meta: { title: "Today's route", requiresAuth: true, permissionKey: 'menus.workshop.jobs.read' },
+  },
+  {
     path: '/field/kit',
     name: 'field-kit',
     component: () => import('@/views/Field/FieldFindKitView.vue'),

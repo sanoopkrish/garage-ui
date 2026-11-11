@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/job.enum.ts
-// Generated at: 2026-10-05T12:06:00.405Z
+// Generated at: 2026-11-11T13:34:13.789Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum JobStatus {
@@ -148,4 +148,44 @@ export const PartsOrderStatusLabels: Record<PartsOrderStatus, string> = {
 };
 
 export const PartsOrderStatusValues = Object.values(PartsOrderStatus);
+
+export enum WorkLocation {
+  WORKSHOP = 'workshop',
+  ON_SITE = 'on_site',
+}
+
+export const WorkLocationLabels: Record<WorkLocation, string> = {
+  [WorkLocation.WORKSHOP]: 'workshop',
+  [WorkLocation.ON_SITE]: 'on_site',
+};
+
+export const WorkLocationValues = Object.values(WorkLocation);
+
+export enum VisitStatus {
+  PLANNED = 'planned',
+  IN_PROGRESS = 'in_progress',
+  DONE = 'done',
+  MISSED = 'missed',
+}
+
+export const VisitStatusLabels: Record<VisitStatus, string> = {
+  [VisitStatus.PLANNED]: 'planned',
+  [VisitStatus.IN_PROGRESS]: 'in_progress',
+  [VisitStatus.DONE]: 'done',
+  [VisitStatus.MISSED]: 'missed',
+};
+
+export const VisitStatusValues = Object.values(VisitStatus);
+
+export enum NoteSource {
+  FIELD = 'field',
+  OFFICE = 'office',
+}
+
+export const NoteSourceLabels: Record<NoteSource, string> = {
+  [NoteSource.FIELD]: 'field',
+  [NoteSource.OFFICE]: 'office',
+};
+
+export const NoteSourceValues = Object.values(NoteSource);
 

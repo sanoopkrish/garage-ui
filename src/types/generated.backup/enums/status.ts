@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/status.enum.ts
-// Generated at: 2026-10-05T12:06:00.402Z
+// Generated at: 2026-11-11T13:34:13.787Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum Status {

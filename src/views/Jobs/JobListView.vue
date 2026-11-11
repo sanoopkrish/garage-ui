@@ -10,15 +10,15 @@ import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
 import UiSearchSelect from '@/components/Ui/UiSearchSelect.vue'
-import { Plus, Eye, Trash2, ChevronLeft, ChevronRight, RotateCcw, FileScan } from 'lucide-vue-next'
+import { Plus, Eye, Trash2, ChevronLeft, ChevronRight, RotateCcw, FileScan, MapPin } from 'lucide-vue-next'
 import DiagnosticInboxPanel from '@/components/Jobs/DiagnosticInboxPanel.vue'
 import { useJobsStore } from '@/stores/jobs.store'
 import { useRoute } from 'vue-router'
-import { getCustomers } from '@/api/customers.api'
+import { getCustomers, getCustomer, type BillingAddress } from '@/api/customers.api'
 import { getVehicles } from '@/api/vehicles.api'
 import { useCrudPermissions } from '@/composables/usePermissions'
 import { ToastService } from '@/services/toast.service'
-import { JobStatus } from '@/types/generated/enums/job'
+import { JobStatus, WorkLocation } from '@/types/generated/enums/job'
 import { jobStatusLabels, jobStatusBadgeVariant } from '@/utils/jobStatus'
 import type { Job } from '@/api/jobs.api'
 import { showConfirmDialog } from '@/utils/alert'
@@ -38,13 +38,25 @@ const statusFilter = ref<'' | JobStatus>('')
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 
 const reworkOnly = ref(false)
+/** Sprint 26 — workshop / on-site filter */
+const locationFilter = ref<'' | WorkLocation>('')
+const locationFilterOptions = [
+  { value: '', label: 'Workshop & on-site' },
+  { value: WorkLocation.WORKSHOP, label: 'Workshop only' },
+  { value: WorkLocation.ON_SITE, label: 'On-site only' },
+]
 
 function currentParams() {
   return {
     search: searchQuery.value || undefined,
     status: statusFilter.value || undefined,
     isRework: reworkOnly.value || undefined,
+    workLocation: locationFilter.value || undefined,
   }
+}
+
+function onLocationFilter() {
+  jobsStore.fetchJobs({ ...currentParams(), page: 1 })
 }
 
 function toggleReworkFilter() {
@@ -84,6 +96,9 @@ const form = reactive({
   description: '',
   status: JobStatus.ENQUIRY as JobStatus,
   dueDate: '',
+  // Sprint 26
+  workLocation: WorkLocation.WORKSHOP as WorkLocation,
+  quoteRequired: 'inherit' as 'inherit' | 'yes' | 'no',
 })
 
 const formErrors = reactive({ customerId: '', vehicleId: '', description: '' })
@@ -125,10 +140,60 @@ async function loadVehicleOptions(customerId: string) {
   }
 }
 
-watch(() => form.customerId, (customerId) => {
+// ── Sprint 26: work location, site address, quote requirement ────────────────
+const site = reactive({ street: '', street2: '', city: '', postcode: '', contactName: '', contactPhone: '', accessNotes: '' })
+const siteErrors = reactive({ street: '', city: '', postcode: '' })
+const customerAddress = ref<BillingAddress | null>(null)
+const customerContact = ref<{ name: string; phone?: string } | null>(null)
+const locationOptions = [
+  { value: WorkLocation.WORKSHOP, label: 'In the workshop' },
+  { value: WorkLocation.ON_SITE, label: 'On-site (at the customer)' },
+]
+const quoteOptions = [
+  { value: 'inherit', label: 'Customer / company default' },
+  { value: 'yes', label: 'Yes — quote first' },
+  { value: 'no', label: 'No — approve straight away' },
+]
+
+function resetSite() {
+  site.street = ''; site.street2 = ''; site.city = ''; site.postcode = ''
+  site.contactName = ''; site.contactPhone = ''; site.accessNotes = ''
+  siteErrors.street = ''; siteErrors.city = ''; siteErrors.postcode = ''
+}
+
+/** Copy the customer's billing address into the site address when it is still empty. */
+function prefillSiteFromCustomer() {
+  if (form.workLocation !== WorkLocation.ON_SITE) return
+  if (site.street || site.city || site.postcode) return
+  const a = customerAddress.value
+  if (a) {
+    site.street = a.street ?? ''
+    site.city = a.city ?? ''
+    site.postcode = a.postcode ?? ''
+  }
+  if (customerContact.value) {
+    site.contactName = site.contactName || customerContact.value.name
+    site.contactPhone = site.contactPhone || (customerContact.value.phone ?? '')
+  }
+}
+
+watch(() => form.workLocation, () => prefillSiteFromCustomer())
+
+watch(() => form.customerId, async (customerId) => {
   form.vehicleId = ''
   formErrors.vehicleId = ''
   loadVehicleOptions(customerId)
+  customerAddress.value = null
+  customerContact.value = null
+  if (!customerId) return
+  try {
+    const customer = await getCustomer(customerId)
+    customerAddress.value = customer.billingAddress ?? null
+    customerContact.value = { name: customer.name, phone: customer.phone }
+    prefillSiteFromCustomer()
+  } catch {
+    /* address prefill is a convenience only */
+  }
 })
 
 function openCreateModal() {
@@ -137,6 +202,11 @@ function openCreateModal() {
   form.description = ''
   form.status = JobStatus.ENQUIRY
   form.dueDate = ''
+  form.workLocation = WorkLocation.WORKSHOP
+  form.quoteRequired = 'inherit'
+  resetSite()
+  customerAddress.value = null
+  customerContact.value = null
   formErrors.customerId = ''
   formErrors.vehicleId = ''
   formErrors.description = ''
@@ -149,7 +219,11 @@ async function submitForm() {
   formErrors.customerId = form.customerId ? '' : 'Customer is required'
   formErrors.vehicleId = form.vehicleId ? '' : 'Vehicle is required'
   formErrors.description = form.description.trim() ? '' : 'Description is required'
-  if (formErrors.customerId || formErrors.vehicleId || formErrors.description) return
+  const onSite = form.workLocation === WorkLocation.ON_SITE
+  siteErrors.street = onSite && !site.street.trim() ? 'Street is required for on-site work' : ''
+  siteErrors.city = onSite && !site.city.trim() ? 'Town is required' : ''
+  siteErrors.postcode = onSite && !/^[A-Za-z]{1,2}\d[A-Za-z\d]?\s*\d[A-Za-z]{2}$/.test(site.postcode.trim()) ? 'Enter a valid UK postcode' : ''
+  if (formErrors.customerId || formErrors.vehicleId || formErrors.description || siteErrors.street || siteErrors.city || siteErrors.postcode) return
 
   submitting.value = true
   try {
@@ -159,6 +233,15 @@ async function submitForm() {
       description: form.description.trim(),
       status: form.status,
       dueDate: form.dueDate || undefined,
+      workLocation: form.workLocation,
+      siteAddress: onSite
+        ? {
+            street: site.street.trim(), street2: site.street2.trim() || undefined, city: site.city.trim(),
+            postcode: site.postcode.trim().toUpperCase(), contactName: site.contactName.trim() || undefined,
+            contactPhone: site.contactPhone.trim() || undefined, accessNotes: site.accessNotes.trim() || undefined,
+          }
+        : undefined,
+      quoteRequired: form.quoteRequired === 'inherit' ? undefined : form.quoteRequired === 'yes',
     })
     ToastService.success('Job created')
     showModal.value = false
@@ -236,6 +319,9 @@ onMounted(() => {
       <div class="w-52">
         <UiSelect v-model="statusFilter" :options="statusFilterOptions" @update:modelValue="onStatusFilter" />
       </div>
+      <div class="w-48">
+        <UiSelect v-model="locationFilter" :options="locationFilterOptions" @update:modelValue="onLocationFilter" />
+      </div>
       <span class="text-sm text-slate-400 ml-auto">{{ jobsStore.total }} jobs</span>
     </div>
 
@@ -265,6 +351,11 @@ onMounted(() => {
         <td class="px-4 py-3.5 whitespace-nowrap">
           <router-link :to="`/jobs/${job.id}`" class="font-semibold text-brand-600 hover:underline">{{ job.jobNumber }}</router-link>
           <span v-if="job.isRework" class="ml-1.5 inline-flex items-center gap-0.5 text-xs text-amber-600" title="Rework"><RotateCcw class="w-3 h-3" /></span>
+          <span
+            v-if="job.workLocation === WorkLocation.ON_SITE"
+            class="ml-1.5 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300"
+            :title="job.siteAddress?.postcode ? `On-site · ${job.siteAddress.postcode}` : 'On-site'"
+          ><MapPin class="w-3 h-3" /> On-site</span>
         </td>
         <td class="px-4 py-3.5 text-slate-700 dark:text-slate-200 font-medium">{{ job.customerName ?? '—' }}</td>
         <td class="px-4 py-3.5">
@@ -352,6 +443,25 @@ onMounted(() => {
             ]"
           />
           <UiInput v-model="form.dueDate" label="Due Date" type="date" />
+        </div>
+
+        <!-- Sprint 26 — where the work happens + quote requirement -->
+        <div class="grid grid-cols-2 gap-4">
+          <UiSelect v-model="form.workLocation" label="Work location" :options="locationOptions" />
+          <UiSelect v-model="form.quoteRequired" label="Needs a quote first?" :options="quoteOptions" />
+        </div>
+        <div v-if="form.workLocation === WorkLocation.ON_SITE" class="rounded-lg border border-slate-200 dark:border-dark-border p-3 space-y-3 bg-slate-50/60 dark:bg-white/5">
+          <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPin class="w-3.5 h-3.5" /> Site address</p>
+          <UiInput v-model="site.street" label="Street" placeholder="12 Station Road" required :error="siteErrors.street" />
+          <div class="grid grid-cols-2 gap-3">
+            <UiInput v-model="site.city" label="Town / City" placeholder="Reading" required :error="siteErrors.city" />
+            <UiInput v-model="site.postcode" label="Postcode" placeholder="RG1 1AA" required :error="siteErrors.postcode" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <UiInput v-model="site.contactName" label="On-site contact" placeholder="Who to ask for" />
+            <UiInput v-model="site.contactPhone" label="Contact phone" placeholder="+44 7700 000000" />
+          </div>
+          <UiInput v-model="site.accessNotes" label="Access notes" placeholder="Gate code, parking, where the vehicle is…" />
         </div>
       </form>
       <template #footer>

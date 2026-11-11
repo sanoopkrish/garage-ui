@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/ai.enum.ts
-// Generated at: 2026-10-05T12:06:00.407Z
+// Generated at: 2026-11-11T13:34:13.791Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum AIFeatureType {

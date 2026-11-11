@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/customer.enum.ts
-// Generated at: 2026-10-05T12:06:00.406Z
+// Generated at: 2026-11-11T13:34:13.790Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum CustomerType {

@@ -1,5 +1,5 @@
 // Auto-generated barrel export
-// Generated at: 2026-10-05T12:06:00.408Z
+// Generated at: 2026-11-11T13:34:13.793Z
 // DO NOT EDIT MANUALLY
 
 // ==================== ENUMS ====================
@@ -16,6 +16,7 @@ export * from './enums/job';
 export * from './enums/invoice';
 export * from './enums/hr';
 export * from './enums/gender';
+export * from './enums/dashboard';
 export * from './enums/customer';
 export * from './enums/credit-note';
 export * from './enums/audit';

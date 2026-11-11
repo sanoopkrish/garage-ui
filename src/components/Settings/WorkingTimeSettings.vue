@@ -20,6 +20,7 @@ const form = reactive<WorkingTimeSettings>({
   unpaidBreakMinutes: 30, breakAfterHours: 6, overtimeMode: OvertimeMode.WEEKLY_OVER_CONTRACTED,
   overtimeDailyThresholdHours: 8, autoClockOutAfterHours: 12, workshopGeofence: null,
   timesheetApproverTag: 'workshop_manager', kioskEnabled: false,
+  fieldTimerCutoff: '23:59', fieldTimerReminderAt: '18:30',
 })
 const geofence = reactive({ lat: '', lng: '', radiusMetres: '250' })
 const kioskUrl = `${window.location.origin}/kiosk`
@@ -205,6 +206,19 @@ const sectionClass = 'text-xs font-semibold uppercase tracking-wider text-slate-
             <select v-model="form.timesheetApproverTag" :disabled="!canUpdate" :class="inputClass">
               <option v-for="o in approverOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
             </select>
+          </div>
+        </div>
+        <!-- Sprint 26 — on-site timer guards -->
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label :class="labelClass">Field timer auto-stop at</label>
+            <input v-model="form.fieldTimerCutoff" type="time" :disabled="!canUpdate" :class="inputClass" />
+            <p class="text-xs text-slate-400 mt-1">An on-site timer still running at this time is stopped and the entry flagged for review.</p>
+          </div>
+          <div>
+            <label :class="labelClass">Running-timer reminder at</label>
+            <input v-model="form.fieldTimerReminderAt" type="time" :disabled="!canUpdate" :class="inputClass" />
+            <p class="text-xs text-slate-400 mt-1">Push reminder to the engineer if a timer is still running. Clear to switch off.</p>
           </div>
         </div>
         <UiToggle v-model="geofenceOn" :disabled="!canUpdate" label="Flag off-site clock-ins" description="Marks a clock-in made away from the workshop. It never blocks clocking in." />

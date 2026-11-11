@@ -165,7 +165,7 @@ async function removeToasts(page) {
   await go(page, '/admin/audit-logs'); await shot(page, 'audit-logs')
   await go(page, '/admin/settings', 2500); await tall(page, 'settings-business')
   const tabs = [
-    ['Billing / VAT', 'settings-billing'], ['Working time', 'settings-working-time'], ['Purchasing', 'settings-purchasing'],
+    ['Billing / VAT', 'settings-billing'], ['Workshop', 'settings-workshop'], ['Working time', 'settings-working-time'], ['Purchasing', 'settings-purchasing'],
     ['Dashboard', 'settings-dashboard'], ['Notifications', 'settings-notifications'], ['Security & Data', 'settings-security'],
   ]
   for (const [label, name] of tabs) {
@@ -249,6 +249,7 @@ async function removeToasts(page) {
   })
   await sleep(3000)
   if (m.url().includes('/field/jobs/')) await mshot('field-job-detail'); else log('no field job to open for', FIELD.email)
+  await go(m, '/field/route', 2500); await mshot('field-route') // Sprint 26
   await go(m, '/field/timesheet', 2500); await prevWeek(m, DEMO_WEEKS_BACK.myWeek); await mshot('field-my-week')
   await go(m, '/field/kit', 2500); await mshot('field-find-kit')
 

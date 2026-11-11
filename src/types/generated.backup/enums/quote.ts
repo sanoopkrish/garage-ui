@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/quote.enum.ts
-// Generated at: 2026-10-05T12:06:00.403Z
+// Generated at: 2026-11-11T13:34:13.788Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum QuoteStatus {

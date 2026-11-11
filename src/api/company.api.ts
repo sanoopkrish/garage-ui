@@ -42,6 +42,9 @@ export interface WorkingTimeSettings {
   workshopGeofence: { lat: number; lng: number; radiusMetres: number } | null
   timesheetApproverTag: string
   kioskEnabled: boolean
+  /** Sprint 26 — on-site timer guards (HH:mm); reminder blank = off */
+  fieldTimerCutoff?: string
+  fieldTimerReminderAt?: string
 }
 
 /** Purchasing feature switches (Sprint 23) — the API always returns these fully resolved */
@@ -57,6 +60,25 @@ export interface ProcurementSettings {
   aiInvoiceCapture: boolean
   lowStockSuggestions: boolean
   fieldReceiptCapture: boolean
+}
+
+/** Sprint 26 — Settings → Billing → "Attach to invoice emails" */
+export interface InvoiceEmailAttachmentSettings {
+  invoicePdf: boolean
+  creditNotePdf: boolean
+  adasCertificate: boolean
+  diagnosticReports: boolean
+  completionPhotos: boolean
+  maxTotalMb: number
+}
+
+export const DEFAULT_INVOICE_EMAIL_ATTACHMENTS: InvoiceEmailAttachmentSettings = {
+  invoicePdf: true,
+  creditNotePdf: true,
+  adasCertificate: true,
+  diagnosticReports: false,
+  completionPhotos: false,
+  maxTotalMb: 10,
 }
 
 export interface CompanySettings {
@@ -75,6 +97,10 @@ export interface CompanySettings {
   defaultTradeCreditAmount?: number | null
   workingTime?: WorkingTimeSettings
   procurement?: Partial<ProcurementSettings>
+  /** Sprint 26 — jobs need a quote before work starts (customers / jobs can override) */
+  quoteRequired?: boolean
+  /** Sprint 26 — what rides along with the invoice email */
+  invoiceEmailAttachments?: Partial<InvoiceEmailAttachmentSettings>
   passwordMinLength?: number
   passwordRequireMixed?: boolean
   idleTimeoutMinutes?: number

@@ -8,9 +8,10 @@ import UiButton from '@/components/Ui/UiButton.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { ChevronLeft, ChevronRight, UserPlus } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, UserPlus, MapPin } from 'lucide-vue-next'
 import { getSchedule, assignTechnician } from '@/api/jobs.api'
 import type { Job } from '@/api/jobs.api'
+import { WorkLocation } from '@/types/generated/enums/job'
 import { getUsers } from '@/api/users.api'
 import type { User } from '@/api/users.api'
 import { usePermissions } from '@/composables/usePermissions'
@@ -73,7 +74,7 @@ async function load() {
   }
 }
 
-/** The date a job appears under: assignment scheduledDate → bookedAt → dueDate */
+/** Fallback date for a job with no visits: assignment scheduledDate → bookedAt → dueDate */
 function jobDate(job: Job, technicianId?: string): string | null {
   const assignment = (job.technicians ?? []).find((t) => !technicianId || t.technicianId === technicianId)
   if (assignment?.scheduledDate) return assignment.scheduledDate
@@ -82,10 +83,18 @@ function jobDate(job: Job, technicianId?: string): string | null {
   return null
 }
 
+/** A card in a cell: the job plus which day of the job this is (Sprint 26 visits) */
+interface Cell {
+  job: Job
+  dayIndex?: number
+  dayCount?: number
+  visitStatus?: string
+}
+
 interface Lane {
   key: string
   name: string
-  cells: Record<string, Job[]>
+  cells: Record<string, Cell[]>
 }
 
 const lanes = computed<Lane[]>(() => {
@@ -96,15 +105,24 @@ const lanes = computed<Lane[]>(() => {
     const techs = job.technicians ?? []
     if (techs.length === 0) {
       const date = jobDate(job)
-      if (date) (unassigned.cells[date] ??= []).push(job)
+      if (date) (unassigned.cells[date] ??= []).push({ job })
       continue
     }
     for (const tech of techs) {
       if (!byTech.has(tech.technicianId)) {
         byTech.set(tech.technicianId, { key: tech.technicianId, name: tech.name, cells: {} })
       }
-      const date = jobDate(job, tech.technicianId)
-      if (date) (byTech.get(tech.technicianId)!.cells[date] ??= []).push(job)
+      const lane = byTech.get(tech.technicianId)!
+      // Sprint 26: one card per planned visit day; fall back to the old single date
+      const visits = (job.visits ?? []).filter((v) => v.assignmentId === tech.assignmentId).sort((a, b) => a.visitDate.localeCompare(b.visitDate))
+      if (visits.length > 0) {
+        visits.forEach((v, i) => {
+          ;(lane.cells[v.visitDate] ??= []).push({ job, dayIndex: i + 1, dayCount: visits.length, visitStatus: v.status })
+        })
+      } else {
+        const date = jobDate(job, tech.technicianId)
+        if (date) (lane.cells[date] ??= []).push({ job })
+      }
     }
   }
 
@@ -118,7 +136,7 @@ const isToday = (d: Date) => iso(d) === iso(new Date())
 // ── Quick-assign from the Unassigned lane ─────────────────────────────────────
 const assigningJob = ref<Job | null>(null)
 const technicians = ref<User[]>([])
-const assignForm = reactive({ technicianId: '', scheduledDate: '' })
+const assignForm = reactive({ technicianId: '', scheduledDate: '', days: 1 })
 const assignSubmitting = ref(false)
 
 const technicianOptions = computed(() =>
@@ -132,6 +150,7 @@ async function openAssign(job: Job, date: string) {
   assigningJob.value = job
   assignForm.technicianId = ''
   assignForm.scheduledDate = date
+  assignForm.days = 1
   if (technicians.value.length === 0) {
     try {
       const response = await getUsers({ role: 'Technician,Field Engineer', pageSize: 100 })
@@ -149,8 +168,9 @@ async function submitAssign() {
   }
   assignSubmitting.value = true
   try {
-    await assignTechnician(assigningJob.value.id, assignForm.technicianId, assignForm.scheduledDate || undefined)
-    ToastService.success('Technician assigned')
+    const days = assignForm.scheduledDate ? Math.max(1, Math.min(10, Number(assignForm.days) || 1)) : 1
+    await assignTechnician(assigningJob.value.id, assignForm.technicianId, assignForm.scheduledDate || undefined, days)
+    ToastService.success(days > 1 ? `Technician assigned for ${days} days` : 'Technician assigned')
     assigningJob.value = null
     await load()
   } catch (err: any) {
@@ -200,13 +220,19 @@ watch(weekStart, load)
             <td class="p-3 font-medium text-slate-700 dark:text-slate-200 whitespace-nowrap">{{ lane.name }}</td>
             <td v-for="d in days" :key="iso(d)" :class="['p-2 min-w-[150px]', isToday(d) ? 'bg-brand-50/40 dark:bg-brand-900/5' : '']">
               <router-link
-                v-for="job in (lane.cells[iso(d)] ?? [])"
-                :key="job.id"
+                v-for="({ job, dayIndex, dayCount, visitStatus }, idx) in (lane.cells[iso(d)] ?? [])"
+                :key="`${job.id}-${idx}`"
                 :to="`/jobs/${job.id}`"
                 class="block mb-1.5 p-2 rounded-lg border border-slate-100 dark:border-dark-border hover:border-brand-300 hover:bg-brand-50 dark:hover:bg-brand-900/10 transition-colors"
               >
-                <p class="text-xs font-semibold text-brand-600">{{ job.jobNumber }}</p>
+                <div class="flex items-center justify-between gap-1">
+                  <p class="text-xs font-semibold text-brand-600">{{ job.jobNumber }}</p>
+                  <span v-if="job.workLocation === WorkLocation.ON_SITE" class="inline-flex items-center gap-0.5 text-[10px] text-sky-600" :title="job.siteAddress?.postcode ?? 'On-site'"><MapPin class="w-3 h-3" /></span>
+                </div>
                 <p class="text-xs text-slate-600 dark:text-slate-300 truncate">{{ job.description }}</p>
+                <p v-if="dayCount && dayCount > 1" :class="['text-[10px] font-medium mt-0.5', visitStatus === 'done' ? 'text-emerald-600' : visitStatus === 'missed' ? 'text-red-500' : 'text-slate-400']">
+                  Day {{ dayIndex }} of {{ dayCount }}{{ visitStatus === 'done' ? ' · done' : visitStatus === 'missed' ? ' · missed' : '' }}
+                </p>
                 <div class="flex items-center justify-between mt-1">
                   <span class="text-[10px] font-mono text-slate-400">{{ job.vehicleRegistration }}</span>
                   <UiBadge :variant="(jobStatusBadgeVariant[job.status] as any)" dot>{{ jobStatusLabels[job.status] }}</UiBadge>
@@ -234,7 +260,11 @@ watch(weekStart, load)
     <UiModal :open="!!assigningJob" :title="`Assign Technician — ${assigningJob?.jobNumber ?? ''}`" @close="assigningJob = null">
       <div class="space-y-4">
         <UiSelect v-model="assignForm.technicianId" label="Technician" :options="technicianOptions" required />
-        <UiInput v-model="assignForm.scheduledDate" label="Scheduled Date" type="date" />
+        <div class="grid grid-cols-2 gap-4">
+          <UiInput v-model="assignForm.scheduledDate" label="First day" type="date" />
+          <UiInput v-model="assignForm.days" label="Number of days" type="number" />
+        </div>
+        <p v-if="Number(assignForm.days) > 1" class="text-xs text-slate-400">Consecutive working days are planned from the first day; weekends are skipped.</p>
       </div>
       <template #footer>
         <UiButton variant="ghost" @click="assigningJob = null">Cancel</UiButton>

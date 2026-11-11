@@ -20,6 +20,8 @@ export interface Customer {
   labourRate?: number | null
   paymentTermsDays?: number
   poRequired: boolean
+  /** Sprint 26 — quote before work? null = inherit the company default */
+  quoteRequired?: boolean | null
   /** B2B only — fixed trade credit raised per invoice (null = none) */
   tradeCreditAmount?: number | null
   tradeCreditVatInclusive?: boolean
@@ -39,6 +41,7 @@ export interface CreateCustomerDto {
   labourRate?: number
   paymentTermsDays?: number
   poRequired?: boolean
+  quoteRequired?: boolean | null
   tradeCreditAmount?: number | null
   tradeCreditVatInclusive?: boolean
   notes?: string

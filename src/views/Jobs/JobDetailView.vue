@@ -7,12 +7,14 @@ import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, RotateCcw, Fuel, Sparkles, Loader2 } from 'lucide-vue-next'
+import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, RotateCcw, Fuel, Sparkles, Loader2, MapPin, Navigation, FileText } from 'lucide-vue-next'
+import { WorkLocation } from '@/types/generated/enums/job'
 import JobQuotesCard from '@/components/Jobs/JobQuotesCard.vue'
 import JobInvoiceCard from '@/components/Jobs/JobInvoiceCard.vue'
 import JobAssignmentsCard from '@/components/Jobs/JobAssignmentsCard.vue'
 import JobChecklistCard from '@/components/Jobs/JobChecklistCard.vue'
 import JobAttachmentsCard from '@/components/Jobs/JobAttachmentsCard.vue'
+import JobNotesCard from '@/components/Jobs/JobNotesCard.vue'
 import AiRewriteButton from '@/components/Ui/AiRewriteButton.vue'
 import { draftDamageNotes } from '@/api/ai.api'
 import { AIFeatureType, useAiFeatures } from '@/composables/useAiFeatures'
@@ -114,6 +116,34 @@ async function raiseRework() {
     router.push(`/jobs/${rework.id}`)
   } catch (e: any) {
     ToastService.error(e.response?.data?.message ?? 'Could not create the rework job')
+  }
+}
+
+// ── Sprint 26: location + quote requirement ───────────────────────────────────
+const QUOTE_LOCKED: JobStatus[] = [
+  JobStatus.APPROVED, JobStatus.PARTS_ORDERED, JobStatus.IN_REPAIR, JobStatus.QUALITY_CHECK, JobStatus.COMPLETE, JobStatus.COLLECTED,
+]
+const quoteLocked = computed(() => !!job.value && QUOTE_LOCKED.includes(job.value.status))
+const quoteToggling = ref(false)
+
+/** Google Maps directions link — opens the native maps app on a phone */
+const navigateUrl = computed(() => {
+  const a = job.value?.siteAddress
+  if (!a) return null
+  const q = [a.street, a.city, a.postcode].filter(Boolean).join(', ')
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(q)}`
+})
+
+async function toggleQuoteRequired() {
+  if (!job.value || quoteLocked.value || quoteToggling.value) return
+  quoteToggling.value = true
+  try {
+    job.value = await jobsStore.updateJob(job.value.id, { quoteRequired: !job.value.quoteRequired })
+    ToastService.success(job.value.quoteRequired ? 'This job now needs a quote before approval' : 'This job can be approved without a quote')
+  } catch (e: any) {
+    ToastService.error(e?.response?.data?.message ?? 'Failed to update')
+  } finally {
+    quoteToggling.value = false
   }
 }
 
@@ -297,6 +327,42 @@ onMounted(load)
             <RotateCcw class="w-3.5 h-3.5 flex-shrink-0" />
             Rework<template v-if="job.originalJobId"> — <router-link :to="`/jobs/${job.originalJobId}`" class="underline">original job</router-link></template>
           </div>
+
+          <!-- Sprint 26 — location + quote chips -->
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            <span
+              :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+                job.workLocation === WorkLocation.ON_SITE ? 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300']"
+            >
+              <MapPin class="w-3 h-3" /> {{ job.workLocation === WorkLocation.ON_SITE ? 'On-site' : 'Workshop' }}
+            </span>
+            <button
+              type="button"
+              :disabled="!canUpdate || quoteLocked || quoteToggling"
+              :title="quoteLocked ? 'Locked once the job is approved' : 'Click to change'"
+              :class="['inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium transition-colors',
+                job.quoteRequired ? 'bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:text-amber-300' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
+                (!canUpdate || quoteLocked) ? 'cursor-default' : 'hover:ring-2 hover:ring-brand-200 cursor-pointer']"
+              @click="toggleQuoteRequired"
+            >
+              <FileText class="w-3 h-3" /> {{ job.quoteRequired ? 'Needs a quote' : 'No quote needed' }}
+            </button>
+          </div>
+
+          <!-- Sprint 26 — site address -->
+          <div v-if="job.workLocation === WorkLocation.ON_SITE && job.siteAddress" class="mb-3 p-2.5 rounded-lg bg-sky-50/60 dark:bg-sky-900/10 text-xs space-y-1">
+            <p class="text-slate-700 dark:text-slate-200">
+              {{ [job.siteAddress.street, job.siteAddress.street2, job.siteAddress.city].filter(Boolean).join(', ') }}
+              <span class="font-mono font-semibold ml-1">{{ job.siteAddress.postcode }}</span>
+            </p>
+            <p v-if="job.siteAddress.contactName || job.siteAddress.contactPhone" class="text-slate-500 dark:text-slate-400">
+              {{ job.siteAddress.contactName }}<template v-if="job.siteAddress.contactPhone"> · <a :href="`tel:${job.siteAddress.contactPhone}`" class="underline">{{ job.siteAddress.contactPhone }}</a></template>
+            </p>
+            <p v-if="job.siteAddress.accessNotes" class="text-slate-500 dark:text-slate-400 italic">{{ job.siteAddress.accessNotes }}</p>
+            <a v-if="navigateUrl" :href="navigateUrl" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-brand-600 hover:underline font-medium pt-0.5">
+              <Navigation class="w-3.5 h-3.5" /> Open in Maps
+            </a>
+          </div>
           <div class="space-y-2 text-sm">
             <div class="flex justify-between"><span class="text-slate-400">Created</span><span class="text-slate-700 dark:text-slate-200">{{ formatDate(job.createdAt) }}</span></div>
             <div class="flex justify-between"><span class="text-slate-400">Due</span><span class="text-slate-700 dark:text-slate-200">{{ formatDate(job.dueDate) }}</span></div>
@@ -452,6 +518,9 @@ onMounted(load)
         </div>
 
         <!-- Quotes (Module 5) -->
+        <!-- Sprint 26 — job notes feed (field + office) -->
+        <JobNotesCard :jobId="(route.params.id as string)" />
+
         <JobQuotesCard :jobId="(route.params.id as string)" @changed="load" />
 
         <!-- Invoices (Module 9) -->

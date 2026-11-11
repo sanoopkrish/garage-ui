@@ -4,9 +4,10 @@ import UiButton from '@/components/Ui/UiButton.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { UserCog, Plus, X, Clock } from 'lucide-vue-next'
-import { assignTechnician, unassignTechnician, addTimeEntry } from '@/api/jobs.api'
-import type { Job, JobTechnician } from '@/api/jobs.api'
+import { UserCog, Plus, X, Clock, CalendarPlus, AlertTriangle, Trash2 } from 'lucide-vue-next'
+import { assignTechnician, unassignTechnician, addTimeEntry, createVisit, deleteVisit, getJob } from '@/api/jobs.api'
+import type { Job, JobTechnician, JobVisit } from '@/api/jobs.api'
+import { VisitStatus } from '@/types/generated/enums/job'
 import { getUsers } from '@/api/users.api'
 import type { User } from '@/api/users.api'
 import { usePermissions, useCrudPermissions } from '@/composables/usePermissions'
@@ -29,8 +30,73 @@ const showAssign = ref(false)
 const technicians = ref<User[]>([])
 const loadingTechs = ref(false)
 const skillFilter = ref('')
-const assignForm = reactive({ technicianId: '', scheduledDate: '' })
+const assignForm = reactive({ technicianId: '', scheduledDate: '', days: 1 })
 const assigning = ref(false)
+
+// ── Sprint 26: visits (technician-days) ──────────────────────────────────────
+const visitStatusLabel: Record<VisitStatus, string> = {
+  [VisitStatus.PLANNED]: 'Planned',
+  [VisitStatus.IN_PROGRESS]: 'On site',
+  [VisitStatus.DONE]: 'Done',
+  [VisitStatus.MISSED]: 'Missed',
+}
+const visitStatusClass: Record<VisitStatus, string> = {
+  [VisitStatus.PLANNED]: 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-slate-300',
+  [VisitStatus.IN_PROGRESS]: 'bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300',
+  [VisitStatus.DONE]: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-300',
+  [VisitStatus.MISSED]: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-300',
+}
+
+function visitsFor(tech: JobTechnician): JobVisit[] {
+  return (props.job.visits ?? []).filter((v) => v.assignmentId === tech.assignmentId)
+}
+
+const addingDayFor = ref<JobTechnician | null>(null)
+const addDayDate = ref('')
+const addingDay = ref(false)
+
+function openAddDay(tech: JobTechnician) {
+  addingDayFor.value = tech
+  const last = visitsFor(tech).map((v) => v.visitDate).sort().pop()
+  addDayDate.value = last ? nextDay(last) : new Date().toISOString().slice(0, 10)
+}
+
+function nextDay(iso: string): string {
+  const d = new Date(iso + 'T00:00:00')
+  d.setDate(d.getDate() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+async function refreshJob() {
+  emit('updated', await getJob(props.job.id))
+}
+
+async function submitAddDay() {
+  if (!addingDayFor.value || !addDayDate.value) return
+  addingDay.value = true
+  try {
+    await createVisit(props.job.id, addingDayFor.value.assignmentId, addDayDate.value)
+    ToastService.success('Visit added')
+    addingDayFor.value = null
+    await refreshJob()
+  } catch (err: any) {
+    apiError(err, 'Failed to add the visit')
+  } finally {
+    addingDay.value = false
+  }
+}
+
+async function removeVisit(visit: JobVisit) {
+  const result = await showConfirmDialog(`Remove the visit on ${formatDate(visit.visitDate)}?`, false, 'Remove')
+  if (!result.isConfirmed) return
+  try {
+    await deleteVisit(props.job.id, visit.id)
+    ToastService.success('Visit removed')
+    await refreshJob()
+  } catch (err: any) {
+    apiError(err, 'Failed to remove the visit')
+  }
+}
 
 const skillOptions = computed(() => {
   const skills = new Set<string>()
@@ -53,6 +119,7 @@ const technicianOptions = computed(() =>
 async function openAssign() {
   assignForm.technicianId = ''
   assignForm.scheduledDate = ''
+  assignForm.days = 1
   skillFilter.value = ''
   showAssign.value = true
   if (technicians.value.length === 0) {
@@ -75,8 +142,9 @@ async function submitAssign() {
   }
   assigning.value = true
   try {
-    const updated = await assignTechnician(props.job.id, assignForm.technicianId, assignForm.scheduledDate || undefined)
-    ToastService.success('Technician assigned')
+    const days = assignForm.scheduledDate ? Math.max(1, Math.min(10, Number(assignForm.days) || 1)) : 1
+    const updated = await assignTechnician(props.job.id, assignForm.technicianId, assignForm.scheduledDate || undefined, days)
+    ToastService.success(days > 1 ? `Technician assigned for ${days} days` : 'Technician assigned')
     showAssign.value = false
     emit('updated', updated)
   } catch (err: any) {
@@ -178,16 +246,56 @@ function formatDate(d?: string | null): string {
           </button>
         </div>
         <div class="flex items-center justify-between mt-2 text-xs text-slate-400">
-          <span>
-            <template v-if="tech.scheduledDate">Scheduled {{ formatDate(tech.scheduledDate) }} · </template>
-            {{ tech.totalHours }}h logged
-          </span>
-          <button v-if="canUpdate" @click="openLog(tech)" class="flex items-center gap-1 text-brand-600 hover:underline">
-            <Clock class="w-3 h-3" /> Log time
-          </button>
+          <span>{{ tech.totalHours }}h logged</span>
+          <div class="flex items-center gap-3">
+            <button v-if="canAssign" @click="openAddDay(tech)" class="flex items-center gap-1 text-brand-600 hover:underline">
+              <CalendarPlus class="w-3 h-3" /> Add day
+            </button>
+            <button v-if="canUpdate" @click="openLog(tech)" class="flex items-center gap-1 text-brand-600 hover:underline">
+              <Clock class="w-3 h-3" /> Log time
+            </button>
+          </div>
         </div>
+
+        <!-- Sprint 26 — visits (one row per planned day) -->
+        <div v-if="visitsFor(tech).length" class="mt-2 space-y-1">
+          <div
+            v-for="(visit, i) in visitsFor(tech)"
+            :key="visit.id"
+            class="flex items-center gap-2 text-xs rounded-md bg-slate-50 dark:bg-white/5 px-2 py-1"
+          >
+            <span class="text-slate-400 w-10 flex-shrink-0">Day {{ i + 1 }}</span>
+            <span class="text-slate-700 dark:text-slate-200 font-medium">{{ formatDate(visit.visitDate) }}</span>
+            <span :class="['px-1.5 py-0.5 rounded-full text-[10px] font-medium', visitStatusClass[visit.status]]">{{ visitStatusLabel[visit.status] }}</span>
+            <span v-if="visit.hours > 0" class="text-slate-500">{{ visit.hours }}h</span>
+            <span v-if="visit.needsReview" class="inline-flex items-center gap-0.5 text-amber-600" title="A timer on this day was auto-stopped — check the hours">
+              <AlertTriangle class="w-3 h-3" /> check
+            </span>
+            <button
+              v-if="canAssign && visit.hours === 0"
+              @click="removeVisit(visit)"
+              class="ml-auto p-0.5 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-slate-300 hover:text-red-500"
+              title="Remove this day"
+            >
+              <Trash2 class="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+        <p v-else class="mt-2 text-[11px] text-slate-400">No day planned yet — add one so it shows on the schedule and the engineer's route.</p>
       </div>
     </div>
+
+    <!-- Sprint 26 — add a day -->
+    <UiModal :open="!!addingDayFor" :title="`Add a day — ${addingDayFor?.name ?? ''}`" @close="addingDayFor = null">
+      <div class="space-y-3">
+        <UiInput v-model="addDayDate" label="Visit date" type="date" required />
+        <p class="text-xs text-slate-400">Use this for a job that runs over more than one day. A different person on another day is a separate assignment.</p>
+      </div>
+      <template #footer>
+        <UiButton variant="ghost" @click="addingDayFor = null">Cancel</UiButton>
+        <UiButton :loading="addingDay" @click="submitAddDay">Add day</UiButton>
+      </template>
+    </UiModal>
 
     <!-- Assign modal -->
     <UiModal :open="showAssign" title="Assign Technician" @close="showAssign = false">
@@ -197,7 +305,11 @@ function formatDate(d?: string | null): string {
         <p v-if="!loadingTechs && technicianOptions.length === 0" class="text-xs text-slate-400">
           No available technicians{{ skillFilter ? ` with the ${skillFilter} skill` : '' }}.
         </p>
-        <UiInput v-model="assignForm.scheduledDate" label="Scheduled Date (optional)" type="date" />
+        <div class="grid grid-cols-2 gap-4">
+          <UiInput v-model="assignForm.scheduledDate" label="First day (optional)" type="date" />
+          <UiInput v-model="assignForm.days" label="Number of days" type="number" :disabled="!assignForm.scheduledDate" />
+        </div>
+        <p v-if="Number(assignForm.days) > 1" class="text-xs text-slate-400">Consecutive working days from the first day are planned automatically.</p>
       </div>
       <template #footer>
         <UiButton variant="ghost" @click="showAssign = false">Cancel</UiButton>

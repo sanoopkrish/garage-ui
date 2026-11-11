@@ -9,6 +9,7 @@ import {
   type AIUsageStats,
 } from '@/api/ai.api'
 import { ToastService } from '@/services/toast.service'
+import { refreshAiFeatures } from '@/composables/useAiFeatures'
 
 // All four features have live endpoints; keep the set for future additions
 const COMING_SOON = new Set<AIFeatureType>()
@@ -51,7 +52,13 @@ async function save() {
   saving.value = true
   try {
     await updateCompanyAIConfiguration(props.companyId, { enabled: form.enabled, features: { ...form.features } })
-    ToastService.success('AI configuration saved')
+    // Owner editing their own company: make the AI buttons appear without a reload
+    void refreshAiFeatures()
+    ToastService.success(
+      available.value
+        ? 'AI configuration saved'
+        : 'AI configuration saved — features stay hidden until AI_API_KEY is set on the server',
+    )
   } catch (e: any) {
     ToastService.error(e.response?.data?.message ?? 'Failed to save AI configuration')
   } finally {
