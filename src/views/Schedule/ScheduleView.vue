@@ -8,7 +8,7 @@ import UiButton from '@/components/Ui/UiButton.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { ChevronLeft, ChevronRight, UserPlus, MapPin } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, UserPlus, MapPin, CalendarRange } from 'lucide-vue-next'
 import { getSchedule, assignTechnician } from '@/api/jobs.api'
 import type { Job } from '@/api/jobs.api'
 import { WorkLocation } from '@/types/generated/enums/job'
@@ -21,6 +21,7 @@ import { ToastService } from '@/services/toast.service'
 const jobs = ref<Job[]>([])
 const loading = ref(true)
 const { hasPermission: canAssign } = usePermissions('menus.workshop.jobs.assignTechnician')
+const { hasPermission: canPlan } = usePermissions('menus.workshop.assignments.read')
 
 // Week starts Monday, shows Mon–Sat
 const weekStart = ref(startOfWeek(new Date()))
@@ -189,6 +190,12 @@ watch(weekStart, load)
   <DefaultLayout>
     <UiPageHeader title="Schedule" subtitle="Weekly view of booked and scheduled jobs by technician.">
       <div class="flex items-center gap-2">
+        <router-link
+          v-if="canPlan"
+          to="/workshop/assignments"
+          class="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline mr-2"
+          title="Plan who is on which job on which day"
+        ><CalendarRange class="w-4 h-4" /> Plan in Assignments</router-link>
         <button @click="prevWeek" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500"><ChevronLeft class="w-4 h-4" /></button>
         <button @click="thisWeek" class="text-sm font-medium text-slate-600 dark:text-slate-300 px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10">{{ weekLabel }}</button>
         <button @click="nextWeek" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10 text-slate-500"><ChevronRight class="w-4 h-4" /></button>

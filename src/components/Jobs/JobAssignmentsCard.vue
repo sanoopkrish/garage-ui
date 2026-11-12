@@ -251,6 +251,9 @@ function formatDate(d?: string | null): string {
             <button v-if="canAssign" @click="openAddDay(tech)" class="flex items-center gap-1 text-brand-600 hover:underline">
               <CalendarPlus class="w-3 h-3" /> Add day
             </button>
+            <button v-if="canAssign" @click="openAssign" class="flex items-center gap-1 text-brand-600 hover:underline" title="Put a different person on another day of this job">
+              <Plus class="w-3 h-3" /> Add person
+            </button>
             <button v-if="canUpdate" @click="openLog(tech)" class="flex items-center gap-1 text-brand-600 hover:underline">
               <Clock class="w-3 h-3" /> Log time
             </button>
@@ -289,7 +292,7 @@ function formatDate(d?: string | null): string {
     <UiModal :open="!!addingDayFor" :title="`Add a day — ${addingDayFor?.name ?? ''}`" @close="addingDayFor = null">
       <div class="space-y-3">
         <UiInput v-model="addDayDate" label="Visit date" type="date" required />
-        <p class="text-xs text-slate-400">Use this for a job that runs over more than one day. A different person on another day is a separate assignment.</p>
+        <p class="text-xs text-slate-400">Use this for a job that runs over more than one day. For a different person on another day use <strong>Add person</strong>, or drag the job in Workshop → Assignments.</p>
       </div>
       <template #footer>
         <UiButton variant="ghost" @click="addingDayFor = null">Cancel</UiButton>

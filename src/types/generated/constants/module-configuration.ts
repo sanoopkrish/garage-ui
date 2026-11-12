@@ -1,6 +1,6 @@
 // Auto-generated from backend constants
 // Source: src/shared/constants/module-configuration.ts
-// Generated at: 2026-11-11T13:39:36.188Z
+// Generated at: 2026-11-12T12:26:11.643Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 
@@ -25,7 +25,7 @@ export type ModuleKey = typeof CONFIGURABLE_MODULE_KEYS[number];
  */
 export const MODULE_SUBMODULES: Record<ModuleKey, readonly string[]> = {
   dashboard: [],
-  workshop:  ['jobs', 'schedule'],
+  workshop:  ['jobs', 'schedule', 'assignments'],
   crm:       ['customers', 'vehicles'],
   team:      ['technicians'],
   stock:     ['inventory'],
@@ -113,6 +113,7 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   // ==================== SUBMODULES ====================
   jobs:        { label: 'Jobs',        description: 'Work orders and repair jobs' },
   schedule:    { label: 'Schedule',    description: 'Appointment scheduling' },
+  assignments: { label: 'Assignments', description: 'Week planner — who is on which job on which day' },
   customers:   { label: 'Customers',   description: 'Customer records' },
   vehicles:    { label: 'Vehicles',    description: 'Vehicle records' },
   technicians: { label: 'Technicians', description: 'Technician profiles' },

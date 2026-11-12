@@ -133,6 +133,7 @@ async function removeToasts(page) {
   await go(page, `/jobs/${IDS.jobInRepair}`, 2800); await tall(page, 'job-detail')
   await go(page, `/jobs/${IDS.jobComplete}`, 2800); await tall(page, 'job-detail-complete')
   await go(page, '/schedule', 2500); await prevWeek(page, DEMO_WEEKS_BACK.schedule); await tall(page, 'schedule', 3000)
+  await go(page, '/workshop/assignments', 3000); await tall(page, 'assignments-planner', 2400) // Sprint 27
   await go(page, '/inventory'); await shot(page, 'job-parts')
   await go(page, '/customers'); await shot(page, 'customers-list')
   await go(page, `/customers/${IDS.customer}`, 2500); await tall(page, 'customer-detail')
@@ -194,6 +195,7 @@ async function removeToasts(page) {
     [`/jobs/${IDS.jobInRepair}`, 'Assign', 'form-assign-technician'],
     [`/jobs/${IDS.jobInRepair}`, 'Log time', 'form-log-time'],
     [`/jobs/${IDS.jobInRepair}`, 'Record Payment', 'form-record-payment'],
+    [`/jobs/${IDS.jobComplete}`, 'Hand over', 'form-job-handover'], // Sprint 27
     [`/jobs/${IDS.jobInRepair}`, 'Edit', 'form-job-notes'],
     ['/admin/notification-templates', 'Edit', 'form-email-template-edit'],
   ]

@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/job.enum.ts
-// Generated at: 2026-11-11T13:39:36.185Z
+// Generated at: 2026-11-12T12:26:11.640Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum JobStatus {
@@ -92,6 +92,20 @@ export const TimeEntrySourceLabels: Record<TimeEntrySource, string> = {
 };
 
 export const TimeEntrySourceValues = Object.values(TimeEntrySource);
+
+export enum StatusChangeSource {
+  MANUAL = 'manual',
+  AUTO = 'auto',
+  SYSTEM = 'system',
+}
+
+export const StatusChangeSourceLabels: Record<StatusChangeSource, string> = {
+  [StatusChangeSource.MANUAL]: 'Manual',
+  [StatusChangeSource.AUTO]: 'Auto',
+  [StatusChangeSource.SYSTEM]: 'System',
+};
+
+export const StatusChangeSourceValues = Object.values(StatusChangeSource);
 
 export enum ChecklistType {
   FIELD = 'field',

@@ -184,6 +184,13 @@ const routes = [
     component: () => import('@/views/Schedule/ScheduleView.vue'),
     meta: { title: 'Schedule', requiresAuth: true, permissionKey: 'menus.workshop.schedule.read' },
   },
+  // Sprint 27 — Assignments planner (technicians × days)
+  {
+    path: '/workshop/assignments',
+    name: 'assignments-planner',
+    component: () => import('@/views/Schedule/AssignmentsPlannerView.vue'),
+    meta: { title: 'Assignments', requiresAuth: true, permissionKey: 'menus.workshop.assignments.read' },
+  },
 
   // Inventory / Parts
   {

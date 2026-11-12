@@ -21,6 +21,9 @@ export interface JobStatusHistoryEntry {
   note: string | null
   changedAt: string
   changedBy: string | null
+  /** Sprint 27 — manual (a person), auto (a status rule) or system (check-in / quote flow) */
+  source: 'manual' | 'auto' | 'system'
+  rule: string | null
 }
 
 export interface JobTechnician {
@@ -89,6 +92,9 @@ export interface Job {
   reworkResolution?: string
   checkin?: JobCheckin | null
   statusHistory?: JobStatusHistoryEntry[]
+  /** Sprint 27 — hand-over sign-off */
+  handedOverAt?: string | null
+  handedOverTo?: string | null
   allowedTransitions?: JobStatus[]
   technicians?: JobTechnician[]
   quotedLabourHours?: number
@@ -172,6 +178,12 @@ export async function updateJob(id: string, dto: UpdateJobDto): Promise<Job> {
   return response.data?.data ?? response.data
 }
 
+/** Sprint 27 — record who collected the vehicle; collects the job when the sign-off rule is on */
+export async function handOverJob(id: string, handedOverTo: string, note?: string): Promise<Job> {
+  const response = await api.post(`/jobs/${id}/hand-over`, { handedOverTo, note })
+  return response.data?.data ?? response.data
+}
+
 export async function updateJobStatus(id: string, status: JobStatus, note?: string): Promise<Job> {
   const response = await api.patch(`/jobs/${id}/status`, { status, note })
   return response.data?.data ?? response.data
@@ -242,6 +254,71 @@ export async function getVisitsForDay(date: string, technicianId?: string): Prom
   const response = await api.get('/visits/day', { params: { date, technicianId } })
   const data = response.data?.data ?? response.data
   return data.items ?? []
+}
+
+// ---- Sprint 27: Assignments planner ----
+
+export interface PlannerTechnician {
+  id: string
+  name: string
+  role: string
+  skills: string[]
+}
+
+export interface PlannerVisit extends VisitSummary {
+  estimatedHours: number
+  jobStatus: JobStatus
+  dayIndex: number
+  dayCount: number
+}
+
+export interface PlannerUnscheduledJob {
+  jobId: string
+  jobNumber: string
+  description: string
+  status: JobStatus
+  workLocation: WorkLocation
+  postcode?: string | null
+  customerName?: string
+  vehicleRegistration?: string
+  dueDate?: string | null
+  estimatedHours: number
+  assignedTechnicianIds: string[]
+}
+
+export interface PlannerCapacity {
+  technicianId: string
+  date: string
+  shiftHours: number
+  bookedHours: number
+  workingDay: boolean
+  overbooked: boolean
+}
+
+export interface PlannerData {
+  from: string
+  to: string
+  workingDays: number[]
+  shiftHours: number
+  technicians: PlannerTechnician[]
+  visits: PlannerVisit[]
+  unscheduled: PlannerUnscheduledJob[]
+  capacity: PlannerCapacity[]
+}
+
+export async function getPlanner(from: string, to: string): Promise<PlannerData> {
+  const response = await api.get('/visits/planner', { params: { from, to } })
+  return response.data?.data ?? response.data
+}
+
+export async function planVisit(dto: { jobId: string; technicianId: string; visitDate: string; sequence?: number; force?: boolean }): Promise<VisitSummary> {
+  const response = await api.post('/visits/plan', dto)
+  return response.data?.data ?? response.data
+}
+
+export async function moveVisit(visitId: string, dto: { technicianId?: string; visitDate: string; sequence?: number; force?: boolean }): Promise<VisitSummary> {
+  const response = await api.post(`/visits/${visitId}/move`, dto)
+  return response.data?.data ?? response.data
 }
 
 export async function getUpcomingVisits(from?: string): Promise<VisitSummary[]> {
@@ -395,6 +472,8 @@ export interface StopTimerOptions {
   finishedForToday?: boolean
   returnTomorrow?: boolean
   returnDate?: string
+  /** Sprint 27 — the work on this job is finished (completes the job when the rule is on) */
+  jobFinished?: boolean
 }
 
 export async function stopTimer(jobId: string, assignmentId: string, options?: string | StopTimerOptions): Promise<void> {

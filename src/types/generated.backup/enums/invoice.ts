@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/invoice.enum.ts
-// Generated at: 2026-11-11T13:34:13.789Z
+// Generated at: 2026-11-11T13:39:36.186Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum InvoiceStatus {

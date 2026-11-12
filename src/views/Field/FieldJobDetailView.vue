@@ -200,10 +200,11 @@ async function toggleTimer() {
   }
 }
 
-async function finishStop(choice: 'done' | 'return' | 'pause') {
+async function finishStop(choice: 'done' | 'return' | 'pause' | 'finished') {
   if (!myAssignment.value || timerBusy.value) return
   const options: StopTimerOptions = { notes: stopNotes.value.trim() || undefined }
   if (choice === 'done') options.finishedForToday = true
+  if (choice === 'finished') options.jobFinished = true // Sprint 27 — completes the job when the rule is on
   if (choice === 'return') {
     options.finishedForToday = true
     if (returnDate.value) options.returnDate = returnDate.value
@@ -216,7 +217,7 @@ async function finishStop(choice: 'done' | 'return' | 'pause') {
     timerAssignmentId.value = null
     stopSheetOpen.value = false
     ToastService.success(
-      choice === 'return' ? 'Time logged — your next visit is planned' : choice === 'done' ? 'Time logged — finished for today' : 'Time logged',
+      choice === 'finished' ? 'Time logged — job finished' : choice === 'return' ? 'Time logged — your next visit is planned' : choice === 'done' ? 'Time logged — finished for today' : 'Time logged',
     )
     job.value = await getJob(jobId)
   } catch (e: any) {
@@ -649,7 +650,13 @@ onBeforeUnmount(() => {
             placeholder="What was done (optional)"
             class="w-full text-sm rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
           />
-          <button :disabled="timerBusy" @click="finishStop('done')" class="w-full py-3 rounded-xl bg-brand-500 text-white font-semibold disabled:opacity-60">Yes — done for today</button>
+          <button
+            v-if="job?.workLocation === WorkLocation.ON_SITE"
+            :disabled="timerBusy"
+            @click="finishStop('finished')"
+            class="w-full py-3 rounded-xl bg-emerald-600 text-white font-semibold disabled:opacity-60"
+          >Yes — job finished</button>
+          <button :disabled="timerBusy" @click="finishStop('done')" class="w-full py-3 rounded-xl bg-brand-500 text-white font-semibold disabled:opacity-60">Yes — done for today, more to do</button>
           <div class="rounded-xl border border-slate-200 dark:border-dark-border p-3 space-y-2">
             <button :disabled="timerBusy" @click="finishStop('return')" class="w-full py-3 rounded-xl bg-slate-700 dark:bg-white/10 text-white font-semibold disabled:opacity-60">
               Yes — coming back {{ returnDate ? formatDay(returnDate) : 'tomorrow' }}

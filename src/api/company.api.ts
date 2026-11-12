@@ -81,6 +81,35 @@ export const DEFAULT_INVOICE_EMAIL_ATTACHMENTS: InvoiceEmailAttachmentSettings =
   maxTotalMb: 10,
 }
 
+/** Sprint 27 — Settings → Workshop → "Automatic status changes" */
+export interface StatusAutomationSettings {
+  enabled: boolean
+  partsOrdered: boolean
+  inRepairOnTimer: boolean
+  inRepairOnFirstTick: boolean
+  inRepairOnPartsReceived: boolean
+  qualityCheckOnChecklist: boolean
+  completeOnQc: boolean
+  completeOnFieldFinish: boolean
+  collectedOnPayment: 'off' | 'b2c' | 'all'
+  collectedOnSignOff: boolean
+  manualHoldMinutes: number
+}
+
+export const DEFAULT_STATUS_AUTOMATION: StatusAutomationSettings = {
+  enabled: true,
+  partsOrdered: true,
+  inRepairOnTimer: true,
+  inRepairOnFirstTick: true,
+  inRepairOnPartsReceived: false,
+  qualityCheckOnChecklist: true,
+  completeOnQc: true,
+  completeOnFieldFinish: true,
+  collectedOnPayment: 'b2c',
+  collectedOnSignOff: true,
+  manualHoldMinutes: 10,
+}
+
 export interface CompanySettings {
   timezone?: string
   dateFormat?: string
@@ -101,6 +130,10 @@ export interface CompanySettings {
   quoteRequired?: boolean
   /** Sprint 26 — what rides along with the invoice email */
   invoiceEmailAttachments?: Partial<InvoiceEmailAttachmentSettings>
+  /** Sprint 27 — automatic status rules */
+  statusAutomation?: Partial<StatusAutomationSettings>
+  /** Sprint 27 — planner hours for a job with no approved quoted labour (default 4) */
+  defaultJobHours?: number
   passwordMinLength?: number
   passwordRequireMixed?: boolean
   idleTimeoutMinutes?: number

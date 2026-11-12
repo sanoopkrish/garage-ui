@@ -9,7 +9,7 @@ import {
   LayoutDashboard, Wrench, Users, Car, UserCog,
   CalendarDays, Package, FileText, Settings, ChevronLeft, ChevronRight,
   Gauge, Shield, UsersRound, Database, Building2, ScrollText,
-  Mail, Hash, Clock, CalendarCheck, ClipboardCheck, ShoppingCart, ReceiptText, Truck, Boxes, ChartColumn, ScanLine,
+  Mail, Hash, Clock, CalendarCheck, ClipboardCheck, ShoppingCart, ReceiptText, Truck, Boxes, ChartColumn, ScanLine, CalendarRange,
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -35,6 +35,7 @@ const nav: NavItem[] = [
   { label: 'Dashboard',    to: '/dashboard',    icon: LayoutDashboard, section: null,       permissionKey: 'menus.dashboard.read' },
   { label: 'Jobs',         to: '/jobs',         icon: Wrench,          section: 'Workshop', permissionKey: 'menus.workshop.jobs.read' },
   { label: 'Schedule',     to: '/schedule',     icon: CalendarDays,    section: 'Workshop', permissionKey: 'menus.workshop.schedule.read' },
+  { label: 'Assignments',  to: '/workshop/assignments', icon: CalendarRange, section: 'Workshop', permissionKey: 'menus.workshop.assignments.read' },
   // parts ordered for jobs (the screen formerly called Inventory); shelf stock is Purchasing → Stock
   { label: 'Job Parts',    to: '/inventory',    icon: Package,         section: 'Workshop', permissionKey: 'menus.stock.inventory.read' },
   { label: 'Customers',    to: '/customers',    icon: Users,           section: 'CRM',      permissionKey: 'menus.crm.customers.read' },

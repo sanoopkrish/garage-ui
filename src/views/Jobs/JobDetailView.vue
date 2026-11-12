@@ -7,7 +7,7 @@ import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiModal from '@/components/Ui/UiModal.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
 import UiSelect from '@/components/Ui/UiSelect.vue'
-import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, RotateCcw, Fuel, Sparkles, Loader2, MapPin, Navigation, FileText } from 'lucide-vue-next'
+import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, RotateCcw, Fuel, Sparkles, Loader2, MapPin, Navigation, FileText, Bot, Handshake } from 'lucide-vue-next'
 import { WorkLocation } from '@/types/generated/enums/job'
 import JobQuotesCard from '@/components/Jobs/JobQuotesCard.vue'
 import JobInvoiceCard from '@/components/Jobs/JobInvoiceCard.vue'
@@ -20,7 +20,7 @@ import { draftDamageNotes } from '@/api/ai.api'
 import { AIFeatureType, useAiFeatures } from '@/composables/useAiFeatures'
 import JobDiagnosticsCard from '@/components/Jobs/JobDiagnosticsCard.vue'
 import JobPartsCard from '@/components/Jobs/JobPartsCard.vue'
-import { createRework } from '@/api/jobs.api'
+import { createRework, handOverJob } from '@/api/jobs.api'
 import { showTextareaDialog } from '@/utils/alert'
 import { useJobsStore } from '@/stores/jobs.store'
 import { useCrudPermissions, usePermissions } from '@/composables/usePermissions'
@@ -104,6 +104,48 @@ async function submitStatus() {
     ToastService.error(Array.isArray(message) ? message.join('; ') : (message ?? 'Failed to update status'))
   } finally {
     statusSubmitting.value = false
+  }
+}
+
+// ── Sprint 27: hand-over sign-off ─────────────────────────────────────────────
+const showHandOver = ref(false)
+const handOverForm = reactive({ handedOverTo: '', note: '' })
+const handOverSubmitting = ref(false)
+
+/** Human-readable rule names for the Auto badge on the timeline */
+const ruleLabels: Record<string, string> = {
+  partsOrdered: 'parts ordered',
+  inRepairOnTimer: 'timer started',
+  inRepairOnFirstTick: 'first checklist tick',
+  inRepairOnPartsReceived: 'all parts received',
+  qualityCheckOnChecklist: 'all work items done',
+  completeOnQc: 'quality check passed',
+  completeOnFieldFinish: 'engineer finished on site',
+  collectedOnPayment: 'paid in full',
+  collectedOnSignOff: 'hand over',
+}
+
+function openHandOver() {
+  handOverForm.handedOverTo = job.value?.customerName ?? ''
+  handOverForm.note = ''
+  showHandOver.value = true
+}
+
+async function submitHandOver() {
+  if (!job.value || !handOverForm.handedOverTo.trim()) {
+    ToastService.error('Enter who collected the vehicle')
+    return
+  }
+  handOverSubmitting.value = true
+  try {
+    job.value = await handOverJob(job.value.id, handOverForm.handedOverTo.trim(), handOverForm.note.trim() || undefined)
+    ToastService.success(job.value.status === JobStatus.COLLECTED ? 'Handed over — job collected' : 'Hand-over recorded')
+    showHandOver.value = false
+  } catch (err: any) {
+    const message = err?.response?.data?.message
+    ToastService.error(Array.isArray(message) ? message.join('; ') : (message ?? 'Failed to record the hand-over'))
+  } finally {
+    handOverSubmitting.value = false
   }
 }
 
@@ -296,6 +338,9 @@ onMounted(load)
         >
           <RotateCcw class="w-4 h-4" /> Create Rework Job
         </UiButton>
+        <UiButton v-if="canUpdateStatus && job && job.status === JobStatus.COMPLETE" variant="secondary" @click="openHandOver">
+          <Handshake class="w-4 h-4" /> Hand over
+        </UiButton>
         <UiButton v-if="canCheckin && canUpdate" variant="secondary" @click="openCheckinModal">
           <ClipboardCheck class="w-4 h-4" /> Check In Vehicle
         </UiButton>
@@ -368,6 +413,7 @@ onMounted(load)
             <div class="flex justify-between"><span class="text-slate-400">Due</span><span class="text-slate-700 dark:text-slate-200">{{ formatDate(job.dueDate) }}</span></div>
             <div v-if="job.completedAt" class="flex justify-between"><span class="text-slate-400">Completed</span><span class="text-green-600">{{ formatDate(job.completedAt, true) }}</span></div>
             <div v-if="job.collectedAt" class="flex justify-between"><span class="text-slate-400">Collected</span><span class="text-green-600">{{ formatDate(job.collectedAt, true) }}</span></div>
+            <div v-if="job.handedOverTo" class="flex justify-between"><span class="text-slate-400">Handed over to</span><span class="text-slate-700 dark:text-slate-200">{{ job.handedOverTo }}</span></div>
           </div>
         </div>
 
@@ -539,6 +585,16 @@ onMounted(load)
               <div class="flex flex-wrap items-center gap-2">
                 <UiBadge :variant="(jobStatusBadgeVariant[entry.toStatus] as any)" dot>{{ jobStatusLabels[entry.toStatus] }}</UiBadge>
                 <span v-if="entry.fromStatus" class="text-xs text-slate-400">from {{ jobStatusLabels[entry.fromStatus] }}</span>
+                <span
+                  v-if="entry.source === 'auto'"
+                  class="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+                  :title="entry.rule ? `Automatic: ${ruleLabels[entry.rule] ?? entry.rule}` : 'Automatic status change'"
+                ><Bot class="w-3 h-3" /> Auto<template v-if="entry.rule"> · {{ ruleLabels[entry.rule] ?? entry.rule }}</template></span>
+                <span
+                  v-else-if="entry.source === 'system'"
+                  class="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-white/10 dark:text-slate-400"
+                  title="Set by the system (check-in or quote flow)"
+                >System</span>
                 <span class="text-xs text-slate-400 ml-auto">{{ formatDate(entry.changedAt, true) }}<template v-if="entry.changedBy"> · {{ entry.changedBy }}</template></span>
               </div>
               <p v-if="entry.note" class="text-sm text-slate-500 dark:text-slate-400 mt-1">{{ entry.note }}</p>
@@ -561,6 +617,19 @@ onMounted(load)
       <template #footer>
         <UiButton variant="ghost" @click="showStatusModal = false">Cancel</UiButton>
         <UiButton :loading="statusSubmitting" @click="submitStatus">Update Status</UiButton>
+      </template>
+    </UiModal>
+
+    <!-- Sprint 27 — hand-over sign-off -->
+    <UiModal :open="showHandOver" title="Hand over" @close="showHandOver = false">
+      <div class="space-y-4">
+        <p class="text-sm text-slate-500 dark:text-slate-400">Record who collected the vehicle (or signed the work off on site). When the hand-over rule is on under Settings → Workshop, the job is collected at the same time.</p>
+        <UiInput v-model="handOverForm.handedOverTo" label="Handed over to" placeholder="Name of the person collecting" required />
+        <UiInput v-model="handOverForm.note" label="Note (optional)" placeholder="e.g. Keys and paperwork given to the driver" />
+      </div>
+      <template #footer>
+        <UiButton variant="ghost" @click="showHandOver = false">Cancel</UiButton>
+        <UiButton :loading="handOverSubmitting" @click="submitHandOver">Record hand-over</UiButton>
       </template>
     </UiModal>
 
