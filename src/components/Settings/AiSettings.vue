@@ -57,7 +57,7 @@ async function save() {
     ToastService.success(
       available.value
         ? 'AI configuration saved'
-        : 'AI configuration saved — features stay hidden until AI_API_KEY is set on the server',
+        : 'AI configuration saved — features stay hidden until an AI provider is set up on the server',
     )
   } catch (e: any) {
     ToastService.error(e.response?.data?.message ?? 'Failed to save AI configuration')
