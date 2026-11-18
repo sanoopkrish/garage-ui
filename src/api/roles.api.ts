@@ -57,7 +57,8 @@ export async function updateRolePermissions(
   id: string,
   permissions: Record<string, any>
 ): Promise<SystemRole> {
-  const response = await apiClient.patch(`/master/system-role/${id}/permissions`, { permissions })
+  // The API takes the permission object itself as the body ({ isAdmin, menus }), not wrapped
+  const response = await apiClient.patch(`/master/system-role/${id}/permissions`, permissions)
   return response.data?.data ?? response.data
 }
 
