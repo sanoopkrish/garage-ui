@@ -5,8 +5,10 @@ import { required, email, minLength } from '@vuelidate/validators'
 import { useAuthStore } from '@/stores/auth'
 import { useValidation } from '@/composables/useValidation'
 import { Gauge, Eye, EyeOff } from 'lucide-vue-next'
+import { useBrandingStore } from '@/stores/branding.store'
 
 const authStore = useAuthStore()
+const brand = useBrandingStore()
 const isMock = import.meta.env.VITE_MOCK_AUTH === 'true'
 
 const form = reactive({ email: isMock ? 'admin@garage.com' : '', password: isMock ? 'demo123' : '' })
@@ -40,16 +42,20 @@ const submit = async () => {
       <!-- Card -->
       <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-2xl overflow-hidden">
         <!-- Top accent bar -->
-        <div class="h-1.5 bg-gradient-to-r from-brand-500 to-amber-400" />
+        <div class="h-1.5 bg-gradient-to-r from-brand-500 to-brand-300" />
 
         <div class="px-8 py-10">
-          <!-- Logo -->
-          <div class="flex items-center justify-center gap-3 mb-8">
+          <!-- Logo — the garage's own (Sprint 28) or the Cruise mark -->
+          <div v-if="brand.lightLogo" class="flex flex-col items-center justify-center mb-8">
+            <img :src="brand.lightLogo" :alt="brand.companyName" class="max-h-16 max-w-[240px] object-contain" />
+            <p class="text-xs text-slate-400 mt-2">{{ brand.companyName }}</p>
+          </div>
+          <div v-else class="flex items-center justify-center gap-3 mb-8">
             <div class="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg">
-              <Gauge class="w-6 h-6 text-white" />
+              <Gauge class="w-6 h-6 text-brand-contrast" />
             </div>
             <div>
-              <p class="text-xl font-bold text-slate-800">Cruise</p>
+              <p class="text-xl font-bold text-slate-800">{{ brand.appName }}</p>
               <p class="text-xs text-slate-400 -mt-0.5">Workshop Management System</p>
             </div>
           </div>
@@ -136,7 +142,8 @@ const submit = async () => {
       </div>
 
       <p class="mt-6 text-center text-xs text-slate-500">
-        &copy; {{ new Date().getFullYear() }} Cruise. All rights reserved.
+        <template v-if="brand.branded">&copy; {{ new Date().getFullYear() }} {{ brand.companyName }} · Powered by <span class="font-semibold">Cruise</span> · A-soft</template>
+        <template v-else>&copy; {{ new Date().getFullYear() }} Cruise · A-soft. All rights reserved.</template>
       </p>
     </div>
   </div>

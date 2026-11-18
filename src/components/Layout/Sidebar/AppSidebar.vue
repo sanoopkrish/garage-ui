@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useTenant } from '@/composables/useTenant'
 import { useAuthStore } from '@/stores/auth'
 import { useProcurementStore } from '@/stores/procurement.store'
+import { useBrandingStore } from '@/stores/branding.store'
 import {
   CircleQuestionMark,
   LayoutDashboard, Wrench, Users, Car, UserCog,
@@ -17,6 +18,7 @@ const collapsed = ref(false)
 const { isOwnerDomain } = useTenant()
 const authStore = useAuthStore()
 const procurement = useProcurementStore()
+const brand = useBrandingStore()
 
 interface NavItem {
   label: string
@@ -117,14 +119,20 @@ onMounted(() => {
       collapsed ? 'w-16' : 'w-60',
     ]"
   >
-    <!-- Logo -->
-    <div class="flex items-center gap-3 px-4 py-5 border-b border-white/10">
-      <div class="flex-shrink-0 w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
-        <Gauge class="w-5 h-5 text-white" />
-      </div>
-      <Transition name="fade">
-        <span v-if="!collapsed" class="text-white font-bold text-lg tracking-tight">Cruise</span>
-      </Transition>
+    <!-- Logo — the tenant's own (Sprint 28) or the Cruise mark -->
+    <div class="flex items-center gap-3 px-4 py-5 border-b border-white/10 min-h-[73px]">
+      <template v-if="brand.darkLogo">
+        <img v-if="!collapsed" :src="brand.darkLogo" :alt="brand.appName" class="h-9 max-w-[180px] object-contain object-left" />
+        <img v-else :src="brand.mark || brand.darkLogo" :alt="brand.appName" class="w-8 h-8 object-contain rounded-lg bg-white/5" />
+      </template>
+      <template v-else>
+        <div class="flex-shrink-0 w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
+          <Gauge class="w-5 h-5 text-brand-contrast" />
+        </div>
+        <Transition name="fade">
+          <span v-if="!collapsed" class="text-white font-bold text-lg tracking-tight">{{ brand.appName }}</span>
+        </Transition>
+      </template>
     </div>
 
     <!-- Navigation -->
@@ -170,7 +178,12 @@ onMounted(() => {
       <ChevronLeft v-if="!collapsed" class="w-3.5 h-3.5" />
       <ChevronRight v-else class="w-3.5 h-3.5" />
     </button>
-  </aside>
+      <!-- Product rule: always shown, never switchable -->
+    <p :class="['px-3 py-2.5 border-t border-white/10 text-[10px] text-slate-500 whitespace-nowrap', collapsed ? 'text-center' : '']" :title="`Powered by ${brand.poweredBy}`">
+      <template v-if="!collapsed">Powered by <span class="font-semibold text-slate-400">Cruise</span> · A-soft</template>
+      <template v-else><span class="font-semibold text-slate-400">C</span></template>
+    </p>
+</aside>
 </template>
 
 <style scoped>

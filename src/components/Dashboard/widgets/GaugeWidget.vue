@@ -9,7 +9,7 @@ const props = defineProps<{ data: GaugeData; size: string }>()
 const { dark } = useDarkMode()
 
 const value = computed(() => (props.data?.value === null || props.data?.value === undefined ? null : Math.max(0, Math.min(100, props.data.value))))
-const colour = computed(() => (value.value === null ? BRAND : value.value >= 70 ? '#22c55e' : value.value >= 40 ? '#f59e0b' : '#ef4444'))
+const colour = computed(() => (value.value === null ? BRAND() : value.value >= 70 ? '#22c55e' : value.value >= 40 ? '#f59e0b' : '#ef4444'))
 
 const chart = computed(() => ({
   options: {

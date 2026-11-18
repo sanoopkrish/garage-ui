@@ -22,7 +22,7 @@ const chart = computed(() => {
     options: {
       ...baseChartOptions(dark.value),
       chart: { ...baseChartOptions(dark.value).chart, type: 'bar' as const, stacked: !!d?.stacked },
-      colors: multi ? [SLATE, GREEN, BRAND] : [BRAND],
+      colors: multi ? [SLATE, GREEN, BRAND()] : [BRAND()],
       plotOptions: { bar: { horizontal: !!d?.horizontal, columnWidth: '55%', barHeight: '55%', borderRadius: 3 } },
       xaxis: {
         categories: d?.categories ?? [],

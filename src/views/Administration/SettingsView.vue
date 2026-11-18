@@ -6,6 +6,7 @@ import UiInput from '@/components/Ui/UiInput.vue'
 import { Building2, CreditCard, Bell, Satellite, ShieldCheck, Clock, ShoppingCart, LayoutDashboard, Wrench } from 'lucide-vue-next'
 import WorkingTimeSettings from '@/components/Settings/WorkingTimeSettings.vue'
 import WorkshopSettings from '@/components/Settings/WorkshopSettings.vue'
+import BrandingSettings from '@/components/Settings/BrandingSettings.vue'
 import InvoiceAttachmentsSettings from '@/components/Settings/InvoiceAttachmentsSettings.vue'
 import ProcurementSettings from '@/components/Settings/ProcurementSettings.vue'
 import DashboardDefaultsSettings from '@/components/Settings/DashboardDefaultsSettings.vue'
@@ -257,6 +258,10 @@ async function saveNotifications() {
                 <span v-else>Save Changes</span>
               </UiButton>
             </div>
+          </div>
+                  <!-- Sprint 28 — logo + colour -->
+          <div class="pt-6 mt-6 border-t border-slate-100 dark:border-dark-border">
+            <BrandingSettings />
           </div>
         </template>
 

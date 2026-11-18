@@ -8,6 +8,8 @@ import { useNotificationsStore } from '@/stores/notifications.store'
 import { usePushNotifications } from '@/composables/usePushNotifications'
 import { ToastService } from '@/services/toast.service'
 import PanicButton from '@/components/Field/PanicButton.vue'
+import AppFooter from '@/components/Layout/AppFooter.vue'
+import { useBrandingStore } from '@/stores/branding.store'
 import ClockWidget from '@/components/Hr/ClockWidget.vue'
 import HelpDrawer from '@/components/Help/HelpDrawer.vue'
 import { useHelpStore } from '@/stores/help.store'
@@ -30,6 +32,7 @@ const fieldTabs = computed(() => [
   ...(canFindKit.value ? [{ to: '/field/kit', label: 'Find kit' }] : []),
 ])
 const authStore = useAuthStore()
+const brand = useBrandingStore()
 const notificationsStore = useNotificationsStore()
 const push = usePushNotifications()
 const help = useHelpStore()
@@ -61,8 +64,9 @@ async function togglePush() {
       >
         <ArrowLeft class="w-5 h-5" />
       </button>
+      <img v-else-if="brand.mark" :src="brand.mark" :alt="brand.appName" class="w-7 h-7 object-contain rounded-lg bg-white/5 flex-shrink-0" />
       <div v-else class="w-7 h-7 bg-brand-500 rounded-lg flex items-center justify-center flex-shrink-0">
-        <Gauge class="w-4 h-4 text-white" />
+        <Gauge class="w-4 h-4 text-brand-contrast" />
       </div>
 
       <h1 class="flex-1 font-semibold text-base truncate">{{ title }}</h1>
@@ -114,6 +118,8 @@ async function togglePush() {
         </div>
       </template>
       <slot />
+      <!-- Sprint 28 — powered-by footer (inside main so the fixed action bar never covers it) -->
+      <AppFooter compact class="mt-8 -mx-4 border-t-0" />
     </main>
 
     <PanicButton />

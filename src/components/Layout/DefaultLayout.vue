@@ -2,6 +2,7 @@
 import AppSidebar from './Sidebar/AppSidebar.vue'
 import AppHeader from './Header/AppHeader.vue'
 import HelpDrawer from '@/components/Help/HelpDrawer.vue'
+import AppFooter from './AppFooter.vue'
 import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 
@@ -20,10 +21,12 @@ const pageTitle = computed(() => String(route.meta.title || 'Dashboard'))
         </template>
       </AppHeader>
 
-      <main class="flex-1 overflow-y-auto">
-        <div class="max-w-screen-2xl mx-auto p-6">
+      <main class="flex-1 overflow-y-auto flex flex-col">
+        <div class="max-w-screen-2xl w-full mx-auto p-6 flex-1">
           <slot />
         </div>
+        <!-- Sprint 28 — company + powered-by footer on every office screen -->
+        <AppFooter />
       </main>
     </div>
 

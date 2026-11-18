@@ -165,6 +165,21 @@ async function removeToasts(page) {
   await go(page, '/admin/master-data'); await shot(page, 'master-data')
   await go(page, '/admin/audit-logs'); await shot(page, 'audit-logs')
   await go(page, '/admin/settings', 2500); await tall(page, 'settings-business')
+  // Sprint 28 — the Branding card on the Business tab, on its own
+  if (!ONLY || ONLY.has('settings-branding')) {
+    await page.setViewport({ width: 1440, height: 900 })
+    const card = await page.evaluateHandle(() => {
+      const h2 = Array.from(document.querySelectorAll('main h2')).find((h) => h.textContent.trim() === 'Branding')
+      return h2 ? h2.parentElement : null
+    })
+    if (card && card.asElement()) {
+      // the card is taller than a screen: grow the viewport so the element screenshot is not clipped
+      const h = await card.asElement().evaluate((el) => Math.ceil(el.getBoundingClientRect().height))
+      await page.setViewport({ width: 1440, height: Math.min(3200, h + 160) }); await sleep(800)
+      await card.asElement().screenshot({ path: path.join(OUT, 'settings-branding.png') }); log('shot', 'settings-branding')
+      await page.setViewport({ width: 1440, height: 900 })
+    } else log('settings-branding MISS')
+  }
   const tabs = [
     ['Billing / VAT', 'settings-billing'], ['Workshop', 'settings-workshop'], ['Working time', 'settings-working-time'], ['Purchasing', 'settings-purchasing'],
     ['Dashboard', 'settings-dashboard'], ['Notifications', 'settings-notifications'], ['Security & Data', 'settings-security'],

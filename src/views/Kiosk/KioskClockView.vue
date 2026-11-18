@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useBrandingStore } from '@/stores/branding.store'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { Gauge, LogIn, LogOut, CheckCircle2, Users, Lock } from 'lucide-vue-next'
 import KioskPinPad from '@/components/Kiosk/KioskPinPad.vue'
@@ -16,6 +17,7 @@ import {
 type Step = 'loading' | 'disabled' | 'setup' | 'locked' | 'pin' | 'confirm' | 'done'
 const step = ref<Step>('loading')
 const companyName = ref('')
+const brand = useBrandingStore()
 const onSite = ref<KioskOnSite[]>([])
 const session = ref<KioskPinLogin | null>(null)
 const pinError = ref<string | null>(null)
@@ -155,7 +157,7 @@ onUnmounted(() => {
     <header class="flex items-center justify-between px-8 py-5 border-b border-white/10">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 bg-brand-500 rounded-xl flex items-center justify-center"><Gauge class="w-5 h-5 text-white" /></div>
-        <span class="text-lg font-semibold">{{ companyName || 'Cruise' }}</span>
+        <span class="text-lg font-semibold">{{ companyName || brand.appName }}</span>
       </div>
       <div class="flex items-center gap-5">
         <button v-if="step === 'pin'" class="p-2 rounded-lg text-white/30 hover:text-white hover:bg-white/10" title="Lock this kiosk" aria-label="Lock this kiosk" @click="lockNow">

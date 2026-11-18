@@ -179,3 +179,57 @@ export async function updateNotificationSettings(
   const response = await api.patch('/company/notification-settings', dto)
   return response.data?.data ?? response.data
 }
+
+// ---- Sprint 28: tenant branding ----
+
+export type LogoType = 'header' | 'login' | 'report' | 'mark' | 'dark'
+
+export interface BrandingLogos {
+  header: string | null
+  login: string | null
+  report: string | null
+  mark: string | null
+  dark: string | null
+  favicon: string | null
+  icon192: string | null
+  icon512: string | null
+}
+
+export interface Branding {
+  name: string
+  appName: string
+  /** False when the tenant has set nothing — the app keeps the Cruise look */
+  branded: boolean
+  primaryColor: string
+  palette: Record<string, string>
+  paletteRgb: Record<string, string>
+  contrastOn500: 'light' | 'dark'
+  logos: BrandingLogos
+  poweredBy: string
+}
+
+const brandingPath = (companyId?: string) => (companyId ? `/company/${companyId}/branding` : '/company/branding')
+
+/** Public — the login page reads this before anyone signs in */
+export async function getBranding(companyId?: string): Promise<Branding> {
+  const response = await api.get(brandingPath(companyId))
+  return response.data?.data ?? response.data
+}
+
+export async function updateBranding(dto: { primaryColor?: string | null; appName?: string | null }, companyId?: string): Promise<Branding> {
+  const response = await api.patch(brandingPath(companyId), dto)
+  return response.data?.data ?? response.data
+}
+
+export async function uploadBrandingLogo(type: LogoType, file: File, companyId?: string): Promise<Branding> {
+  const form = new FormData()
+  form.append('file', file, file.name)
+  const response = await api.post(`${brandingPath(companyId)}/logo/${type}`, form, { headers: { 'Content-Type': 'multipart/form-data' } })
+  return response.data?.data ?? response.data
+}
+
+export async function removeBrandingLogo(type: LogoType, companyId?: string): Promise<Branding> {
+  const response = await api.delete(`${brandingPath(companyId)}/logo/${type}`)
+  return response.data?.data ?? response.data
+}
+

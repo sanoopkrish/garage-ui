@@ -8,6 +8,7 @@ import { Toast, toastOptions } from './plugins/toast'
 import clickOutside from './directives/clickOutside'
 import { vPermission } from './composables/usePermissions'
 import { useAuthStore } from './stores/auth'
+import { useBrandingStore } from './stores/branding.store'
 import { handleError } from './utils/errorHandler'
 
 const app = createApp(App)
@@ -24,6 +25,8 @@ app.use(router)
 
 const init = async () => {
   try {
+    // Sprint 28 — tenant logo + colour first, so nothing flashes orange on a branded tenant
+    await useBrandingStore(pinia).load()
     await router.isReady()
     const authStore = useAuthStore(pinia)
     // The wall-tablet kiosk is never logged in — don't try to restore a session there

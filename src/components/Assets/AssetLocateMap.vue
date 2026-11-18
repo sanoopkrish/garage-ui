@@ -12,7 +12,7 @@ let marker: L.Marker | null = null
 function pin(): L.DivIcon {
   return L.divIcon({
     className: '',
-    html: `<div style="background:#f97316;color:#fff;font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${props.label}</div>`,
+    html: `<div style="background:rgb(var(--brand-500));color:#fff;font-size:11px;font-weight:600;padding:3px 8px;border-radius:12px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${props.label}</div>`,
     iconAnchor: [20, 12],
   })
 }

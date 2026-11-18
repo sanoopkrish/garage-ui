@@ -18,7 +18,7 @@ const chart = computed(() => {
       ...baseChartOptions(dark.value),
       chart: { ...baseChartOptions(dark.value).chart, type: 'donut' as const },
       labels: d?.labels ?? [],
-      colors: PALETTE,
+      colors: PALETTE(),
       legend: { position: 'bottom' as const },
       plotOptions: { pie: { donut: { size: '60%' } } },
       tooltip: { ...baseChartOptions(dark.value).tooltip, y: { formatter: fmt } },

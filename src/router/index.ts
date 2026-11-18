@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useBrandingStore } from '@/stores/branding.store'
 import { useTenant } from '@/composables/useTenant'
 import { pinia } from '@/stores/piniaInstance'
 
@@ -365,7 +366,7 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
-  document.title = `${to.meta.title || 'Workshop'} | Cruise`
+  document.title = `${to.meta.title || 'Workshop'} | ${useBrandingStore(pinia).appName}`
 
   if (to.meta.requiresAuth === false) return true
 

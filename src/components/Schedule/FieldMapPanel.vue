@@ -20,7 +20,7 @@ function vanIcon(label: string): L.DivIcon {
     className: '',
     html: `<div style="display:flex;flex-direction:column;align-items:center;transform:translate(-50%,-100%)">
       <span style="background:#0f172a;color:#fff;font-size:11px;font-weight:600;padding:2px 8px;border-radius:9999px;white-space:nowrap;box-shadow:0 1px 4px rgba(0,0,0,.3)">${label}</span>
-      <span style="width:14px;height:14px;background:#f97316;border:3px solid #fff;border-radius:9999px;box-shadow:0 1px 4px rgba(0,0,0,.4);margin-top:2px"></span>
+      <span style="width:14px;height:14px;background:rgb(var(--brand-500));border:3px solid #fff;border-radius:9999px;box-shadow:0 1px 4px rgba(0,0,0,.4);margin-top:2px"></span>
     </div>`,
     iconSize: [0, 0],
   })

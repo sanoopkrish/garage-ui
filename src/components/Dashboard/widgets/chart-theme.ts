@@ -1,10 +1,13 @@
 import type { ValueFormat } from '@/api/dashboard.api'
 import { formatValue } from '@/utils/dashboard'
 
-export const BRAND = '#f97316'
+import { brandHex } from '@/utils/brand'
+
 export const SLATE = '#64748b'
 export const GREEN = '#22c55e'
-export const PALETTE = [BRAND, '#fb923c', '#fdba74', SLATE, '#94a3b8', '#cbd5e1']
+/** Sprint 28 — read at render time so charts follow the tenant's colour */
+export const BRAND = () => brandHex(500)
+export const PALETTE = () => [brandHex(500), brandHex(400), brandHex(300), SLATE, '#94a3b8', '#cbd5e1']
 
 /** ApexCharts options shared by every chart widget (dark-mode aware) */
 export function baseChartOptions(dark: boolean) {

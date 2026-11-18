@@ -17,7 +17,7 @@ const chart = computed(() => {
     options: {
       ...baseChartOptions(dark.value),
       chart: { ...baseChartOptions(dark.value).chart, type: 'area' as const },
-      colors: [BRAND, SLATE],
+      colors: [BRAND(), SLATE],
       stroke: { curve: 'smooth' as const, width: 2.5 },
       fill: { type: 'gradient', gradient: { opacityFrom: 0.35, opacityTo: 0.02 } },
       xaxis: { categories: d?.categories ?? [] },

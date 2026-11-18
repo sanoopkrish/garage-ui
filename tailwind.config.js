@@ -8,17 +8,21 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Sprint 28 — tenant brand colour. Every shade is a CSS variable ('r g b'); the Cruise
+        // orange defaults are in src/assets/css/index.css and the branding store overrides them per tenant.
         brand: {
-          50:  '#fff7ed',
-          100: '#ffedd5',
-          200: '#fed7aa',
-          300: '#fdba74',
-          400: '#fb923c',
-          500: '#f97316',
-          600: '#ea6c0a',
-          700: '#c2510a',
-          800: '#9a3e0e',
-          900: '#7c330f',
+          50:  'rgb(var(--brand-50) / <alpha-value>)',
+          100: 'rgb(var(--brand-100) / <alpha-value>)',
+          200: 'rgb(var(--brand-200) / <alpha-value>)',
+          300: 'rgb(var(--brand-300) / <alpha-value>)',
+          400: 'rgb(var(--brand-400) / <alpha-value>)',
+          500: 'rgb(var(--brand-500) / <alpha-value>)',
+          600: 'rgb(var(--brand-600) / <alpha-value>)',
+          700: 'rgb(var(--brand-700) / <alpha-value>)',
+          800: 'rgb(var(--brand-800) / <alpha-value>)',
+          900: 'rgb(var(--brand-900) / <alpha-value>)',
+          /** text that reads on bg-brand-500/600: white, or slate-900 for a pale primary */
+          contrast: 'rgb(var(--brand-contrast) / <alpha-value>)',
         },
         sidebar: {
           DEFAULT: '#0f172a',

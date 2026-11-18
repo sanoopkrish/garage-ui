@@ -5,8 +5,10 @@ import { required, email, minLength } from '@vuelidate/validators'
 import { useAuthStore } from '@/stores/auth'
 import { useValidation } from '@/composables/useValidation'
 import { Gauge, Eye, EyeOff } from 'lucide-vue-next'
+import { useBrandingStore } from '@/stores/branding.store'
 
 const authStore = useAuthStore()
+const brand = useBrandingStore()
 
 const form = reactive({ email: '', password: '' })
 const rules = {
@@ -35,16 +37,17 @@ const submit = async () => {
     <div class="w-full max-w-sm">
       <!-- Brand -->
       <div class="flex flex-col items-center mb-8">
-        <div class="w-16 h-16 bg-brand-500 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 mb-4">
-          <Gauge class="w-9 h-9 text-white" />
+        <img v-if="brand.darkLogo" :src="brand.darkLogo" :alt="brand.companyName" class="max-h-16 max-w-[220px] object-contain mb-4" />
+        <div v-else class="w-16 h-16 bg-brand-500 rounded-2xl flex items-center justify-center shadow-lg shadow-brand-500/30 mb-4">
+          <Gauge class="w-9 h-9 text-brand-contrast" />
         </div>
-        <h1 class="text-white font-bold text-2xl tracking-tight">Cruise <span class="text-brand-400">Field</span></h1>
+        <h1 class="text-white font-bold text-2xl tracking-tight">{{ brand.appName }} <span class="text-brand-400">Field</span></h1>
         <p class="text-slate-400 text-sm mt-1">Field engineer sign in</p>
       </div>
 
       <!-- Card -->
       <div class="bg-white dark:bg-dark-surface rounded-2xl shadow-2xl overflow-hidden">
-        <div class="h-1.5 bg-gradient-to-r from-brand-500 to-amber-400" />
+        <div class="h-1.5 bg-gradient-to-r from-brand-500 to-brand-300" />
         <div class="px-6 py-8">
           <div v-if="authStore.error" class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600 flex items-center gap-2">
             <span class="flex-shrink-0">⚠</span> {{ authStore.error }}
@@ -108,6 +111,7 @@ const submit = async () => {
       <p class="text-center text-slate-500 text-xs mt-6">
         Office staff? <router-link to="/auth/login" class="text-brand-400 hover:underline">Sign in here</router-link>
       </p>
+      <p class="mt-5 text-center text-[11px] text-slate-500">Powered by <span class="font-semibold text-slate-400">Cruise</span> · A-soft</p>
     </div>
   </div>
 </template>

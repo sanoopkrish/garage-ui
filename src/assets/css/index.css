@@ -5,6 +5,20 @@
 @tailwind utilities;
 
 @layer base {
+  /* Sprint 28 — Cruise orange as the default brand palette; the branding store overrides these per tenant */
+  :root {
+    --brand-50: 255 247 237;
+    --brand-100: 255 237 213;
+    --brand-200: 254 215 170;
+    --brand-300: 253 186 116;
+    --brand-400: 251 146 60;
+    --brand-500: 249 115 22;
+    --brand-600: 234 108 10;
+    --brand-700: 194 81 10;
+    --brand-800: 154 62 14;
+    --brand-900: 124 51 15;
+    --brand-contrast: 255 255 255;
+  }
   * {
     @apply border-slate-200;
   }
