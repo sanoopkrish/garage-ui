@@ -123,7 +123,7 @@ onMounted(load)
 <template>
   <div>
     <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100 mb-1">Branding</h2>
-    <p class="text-sm text-slate-500 mb-5">Your logo and colour across the app, the field app, emails and PDFs. "Powered by Cruise · A-soft" is always shown.</p>
+    <p class="text-sm text-slate-500 mb-5">Your logo and colour across the app, the field app, emails and PDFs. A small "Powered by" line is always shown.</p>
 
     <div v-if="loading" class="h-40 animate-pulse bg-slate-100 dark:bg-white/5 rounded-lg" />
 
@@ -203,7 +203,7 @@ onMounted(load)
             <div class="rounded-md bg-sidebar p-3 flex items-center gap-3">
               <img v-if="branding.logos.dark || branding.logos.header" :src="(branding.logos.dark || branding.logos.header)!" alt="" class="h-6 max-w-[120px] object-contain" />
               <span v-else class="text-white font-bold text-sm">{{ form.appName || branding.name }}</span>
-              <span class="ml-auto text-[10px] text-slate-500">Powered by <span class="text-slate-400 font-semibold">Cruise</span> · A-soft</span>
+              <span class="ml-auto text-[10px] text-slate-500">Powered by <span class="text-slate-400 font-semibold">A-soft - Tconsult Technologies</span></span>
             </div>
             <div class="rounded-md bg-white border border-slate-200 p-3">
               <div class="border-b-2 pb-1 mb-1" :style="{ borderColor: previewPalette.hex[500] }"><span class="font-bold text-sm" :style="{ color: previewPalette.hex[500] }">{{ branding.name }}</span></div>

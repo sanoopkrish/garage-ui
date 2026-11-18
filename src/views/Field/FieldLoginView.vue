@@ -111,7 +111,7 @@ const submit = async () => {
       <p class="text-center text-slate-500 text-xs mt-6">
         Office staff? <router-link to="/auth/login" class="text-brand-400 hover:underline">Sign in here</router-link>
       </p>
-      <p class="mt-5 text-center text-[11px] text-slate-500">Powered by <span class="font-semibold text-slate-400">Cruise</span> · A-soft</p>
+      <p class="mt-5 text-center text-[11px] text-slate-500">Powered by <span class="font-semibold text-slate-400">A-soft - Tconsult Technologies</span></p>
     </div>
   </div>
 </template>

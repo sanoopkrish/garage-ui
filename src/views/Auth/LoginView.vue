@@ -142,8 +142,7 @@ const submit = async () => {
       </div>
 
       <p class="mt-6 text-center text-xs text-slate-500">
-        <template v-if="brand.branded">&copy; {{ new Date().getFullYear() }} {{ brand.companyName }} · Powered by <span class="font-semibold">Cruise</span> · A-soft</template>
-        <template v-else>&copy; {{ new Date().getFullYear() }} Cruise · A-soft. All rights reserved.</template>
+        &copy; {{ new Date().getFullYear() }} Cruise · Powered by <span class="font-semibold">A-soft - Tconsult Technologies</span>
       </p>
     </div>
   </div>

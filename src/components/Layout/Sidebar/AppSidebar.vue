@@ -180,8 +180,8 @@ onMounted(() => {
     </button>
       <!-- Product rule: always shown, never switchable -->
     <p :class="['px-3 py-2.5 border-t border-white/10 text-[10px] text-slate-500 whitespace-nowrap', collapsed ? 'text-center' : '']" :title="`Powered by ${brand.poweredBy}`">
-      <template v-if="!collapsed">Powered by <span class="font-semibold text-slate-400">Cruise</span> · A-soft</template>
-      <template v-else><span class="font-semibold text-slate-400">C</span></template>
+      <template v-if="!collapsed">Powered by <span class="font-semibold text-slate-400">A-soft - Tconsult Technologies</span></template>
+      <template v-else><span class="font-semibold text-slate-400">A</span></template>
     </p>
 </aside>
 </template>

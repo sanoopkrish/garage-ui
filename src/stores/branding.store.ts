@@ -13,7 +13,7 @@ const CRUISE_RGB: Record<string, string> = {
   50: '255 247 237', 100: '255 237 213', 200: '254 215 170', 300: '253 186 116', 400: '251 146 60',
   500: '249 115 22', 600: '234 108 10', 700: '194 81 10', 800: '154 62 14', 900: '124 51 15',
 }
-export const POWERED_BY = 'Cruise · A-soft'
+export const POWERED_BY = 'A-soft - Tconsult Technologies'
 
 export const useBrandingStore = defineStore('branding', () => {
   const branding = ref<Branding | null>(null)
