@@ -28,7 +28,8 @@ const route = useRoute()
 const { hasPermission: canFindKit } = usePermissions('menus.assets.register.read')
 const fieldTabs = computed(() => [
   { to: '/field', label: 'Jobs' },
-  { to: '/field/timesheet', label: 'My week' },
+  // clocking and timesheets belong to the HR module, which the owner can switch off per company
+  ...(authStore.moduleEnabled('hr') ? [{ to: '/field/timesheet', label: 'My week' }] : []),
   ...(canFindKit.value ? [{ to: '/field/kit', label: 'Find kit' }] : []),
 ])
 const authStore = useAuthStore()
@@ -107,7 +108,7 @@ async function togglePush() {
 
     <main class="flex-1 w-full max-w-2xl mx-auto p-4 pb-24">
       <template v-if="!backTo">
-        <ClockWidget variant="card" />
+        <ClockWidget v-if="authStore.moduleEnabled('hr')" variant="card" />
         <FieldReceiptButton />
         <div class="flex gap-1 p-1 mb-4 rounded-xl bg-slate-200/70 dark:bg-white/10">
           <router-link

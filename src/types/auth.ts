@@ -1,3 +1,5 @@
+import type { EnabledModules } from '@/types/generated/constants/module-configuration'
+
 export interface AuthUser {
   id: string
   email: string
@@ -13,6 +15,8 @@ export interface Company {
   id: string
   name: string
   subdomain: string
+  /** The owner's module switches for this company (null = never configured, nothing switched off) */
+  moduleConfiguration?: { enabledModules?: EnabledModules } | null
 }
 
 export interface LoginPayload {

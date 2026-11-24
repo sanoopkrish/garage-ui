@@ -70,7 +70,7 @@ const logout = async () => {
     <!-- Right actions -->
     <div class="flex items-center gap-2">
       <!-- Clock in / out (Sprint 18) -->
-      <ClockWidget variant="header" />
+      <ClockWidget v-if="authStore.moduleEnabled('hr')" variant="header" />
 
       <!-- Help for this screen (Sprint 25) -->
       <button

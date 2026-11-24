@@ -77,7 +77,7 @@ const routes = [
     path: '/field/timesheet',
     name: 'field-timesheet',
     component: () => import('@/views/Field/FieldTimesheetView.vue'),
-    meta: { title: 'My Week', requiresAuth: true },
+    meta: { title: 'My Week', requiresAuth: true, module: 'hr' },
   },
 
   // Wall-tablet clocking — public: the tablet is never logged in; the API checks the tenant's kiosk switch
@@ -93,7 +93,7 @@ const routes = [
     path: '/hr/my-week',
     name: 'hr-my-week',
     component: () => import('@/views/Hr/MyWeekView.vue'),
-    meta: { title: 'My Week', requiresAuth: true },
+    meta: { title: 'My Week', requiresAuth: true, module: 'hr' },
   },
   {
     path: '/hr/attendance',
@@ -330,7 +330,16 @@ const routes = [
     path: '/admin/settings',
     name: 'admin-settings',
     component: () => import('@/views/Administration/SettingsView.vue'),
-    meta: { title: 'Settings', requiresAuth: true },
+    // any one settings tab is enough — the same list as the sidebar entry
+    meta: { title: 'Settings', requiresAuth: true, permissionAnyOf: [
+      'menus.administration.settings.business.read',
+      'menus.administration.settings.billing.read',
+      'menus.administration.settings.notifications.read',
+      'menus.administration.settings.security.read',
+      'menus.administration.settings.appearance.read',
+      'menus.administration.settings.integrations.read',
+      'menus.administration.settings.dashboard.read',
+    ] },
   },
   {
     path: '/admin/roles',
@@ -395,8 +404,7 @@ router.beforeEach(async (to) => {
   // Only redirect when they can actually enter /field — otherwise the RBAC branch below
   // would bounce them back here and abort navigation in an infinite redirect.
   if (authStore.isFieldWorkerOnly && (to.path === '/dashboard' || to.path === '/')) {
-    const flat = authStore.userPermissionsFlat ?? {}
-    if (authStore.userPermissions?.isAdmin || flat['menus.workshop.jobs.read']) {
+    if (authStore.can('menus.workshop.jobs.read')) {
       return { name: 'field-jobs' }
     }
   }
@@ -414,12 +422,20 @@ router.beforeEach(async (to) => {
     }
   }
 
-  // RBAC: route requires a permission key unless the user is admin
-  if (to.meta.permissionKey && authStore.userPermissions?.isAdmin !== true) {
-    const flat = authStore.userPermissionsFlat ?? {}
-    if (!flat[to.meta.permissionKey as string]) {
-      return to.name === 'dashboard' ? true : { name: 'dashboard' }
-    }
+  // A screen with no permission key (My Week) still belongs to a module the owner can switch off
+  if (to.meta.module && !authStore.moduleEnabled(to.meta.module as string)) {
+    return to.name === 'dashboard' ? true : { name: 'dashboard' }
+  }
+
+  // A screen that opens for any one of several permissions (Settings: one per tab)
+  if (Array.isArray(to.meta.permissionAnyOf) && !(to.meta.permissionAnyOf as string[]).some((k) => authStore.can(k))) {
+    return to.name === 'dashboard' ? true : { name: 'dashboard' }
+  }
+
+  // RBAC: route requires a permission key. Admins pass, except into a module the owner has
+  // switched off for this company (authStore.can applies both rules).
+  if (to.meta.permissionKey && !authStore.can(to.meta.permissionKey as string)) {
+    return to.name === 'dashboard' ? true : { name: 'dashboard' }
   }
 
   return true

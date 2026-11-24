@@ -7,7 +7,7 @@ import UiTable from '@/components/Ui/UiTable.vue'
 import UiBadge from '@/components/Ui/UiBadge.vue'
 import UiSearchInput from '@/components/Ui/UiSearchInput.vue'
 import { Pencil, ChevronLeft, ChevronRight } from 'lucide-vue-next'
-import { getUsers } from '@/api/users.api'
+import { getTechnicians } from '@/api/users.api'
 import { getTechnicianStats } from '@/api/jobs.api'
 import type { TechnicianStats } from '@/api/jobs.api'
 import type { User } from '@/api/users.api'
@@ -19,7 +19,6 @@ import { ToastService } from '@/services/toast.service'
  * (no separate entity). Skills come from master data (Admin → Master Data → Skills)
  * and are assigned on the user edit page.
  */
-const TECHNICIAN_ROLES = 'Technician,Field Engineer'
 
 const router = useRouter()
 const { canUpdate } = useCrudPermissions('team', 'technicians')
@@ -38,8 +37,7 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null
 async function load(p = page.value) {
   loading.value = true
   try {
-    const response = await getUsers({
-      role: TECHNICIAN_ROLES,
+    const response = await getTechnicians({
       search: searchQuery.value || undefined,
       page: p,
       pageSize,

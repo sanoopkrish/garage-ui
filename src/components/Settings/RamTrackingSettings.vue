@@ -9,7 +9,7 @@ import {
   getRamStatus, getRamConfig, updateRamConfig, getRamVehicles, pullMileage,
   type RamStatus, type RamConfig, type RamVehicle,
 } from '@/api/ram-tracking.api'
-import { getUsers, type User } from '@/api/users.api'
+import { getTechnicians, type User } from '@/api/users.api'
 import { ToastService } from '@/services/toast.service'
 import { usePermissions } from '@/composables/usePermissions'
 
@@ -55,7 +55,7 @@ async function load() {
     const [s, c, users] = await Promise.all([
       getRamStatus(),
       getRamConfig(),
-      getUsers({ role: 'Technician,Field Engineer', pageSize: 100 }),
+      getTechnicians({ pageSize: 100 }),
     ])
     status.value = s
     config.value = c

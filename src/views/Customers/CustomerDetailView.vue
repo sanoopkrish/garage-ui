@@ -34,6 +34,8 @@ const loading = ref(true)
 
 // Sprint 20 — the account's credit notes (finance-gated)
 const { hasPermission: canSeeCreditNotes } = usePermissions('menus.finance.creditNotes.read')
+const { hasPermission: canSeeVehicles } = usePermissions('menus.crm.vehicles.read')
+const { hasPermission: canSeeJobs } = usePermissions('menus.workshop.jobs.read')
 const creditNotes = ref<CreditNote[]>([])
 
 const displayName = computed(() => customer.value?.businessName || customer.value?.name || '')
@@ -95,9 +97,11 @@ onMounted(async () => {
   const id = route.params.id as string
   try {
     customer.value = await customersStore.getCustomer(id)
+    // Each list needs its own permission (Accounts reads customers but not vehicles) — only
+    // ask for what this user may see, so a missing permission never breaks the whole page
     const [vehicleResponse, jobResponse] = await Promise.all([
-      getVehicles({ customerId: id, pageSize: 100 }),
-      getJobs({ customerId: id, pageSize: 50 }),
+      canSeeVehicles.value ? getVehicles({ customerId: id, pageSize: 100 }) : Promise.resolve({ items: [] as Vehicle[] }),
+      canSeeJobs.value ? getJobs({ customerId: id, pageSize: 50 }) : Promise.resolve({ items: [] as Job[] }),
     ])
     vehicles.value = vehicleResponse.items
     jobs.value = jobResponse.items
@@ -195,8 +199,8 @@ onMounted(async () => {
           </div>
         </div>
 
-        <!-- Vehicles -->
-        <div class="card">
+        <!-- Vehicles (only for users who may read vehicles) -->
+        <div v-if="canSeeVehicles" class="card">
           <div class="flex items-center gap-2 mb-3">
             <Car class="w-4 h-4 text-brand-500" />
             <h2 class="text-sm font-semibold text-slate-700 dark:text-slate-200">Vehicles ({{ vehicles.length }})</h2>
@@ -241,8 +245,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Right: job history -->
-      <div class="xl:col-span-2 card">
+      <!-- Right: job history (only for users who may read jobs) -->
+      <div v-if="canSeeJobs" class="xl:col-span-2 card">
         <div class="flex items-center gap-2 mb-4">
           <Wrench class="w-4 h-4 text-brand-500" />
           <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100">Job History ({{ jobs.length }})</h2>

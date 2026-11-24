@@ -8,7 +8,7 @@ import { UserCog, Plus, X, Clock, CalendarPlus, AlertTriangle, Trash2 } from 'lu
 import { assignTechnician, unassignTechnician, addTimeEntry, createVisit, deleteVisit, getJob } from '@/api/jobs.api'
 import type { Job, JobTechnician, JobVisit } from '@/api/jobs.api'
 import { VisitStatus } from '@/types/generated/enums/job'
-import { getUsers } from '@/api/users.api'
+import { getTechnicians } from '@/api/users.api'
 import type { User } from '@/api/users.api'
 import { usePermissions, useCrudPermissions } from '@/composables/usePermissions'
 import { ToastService } from '@/services/toast.service'
@@ -125,7 +125,7 @@ async function openAssign() {
   if (technicians.value.length === 0) {
     loadingTechs.value = true
     try {
-      const response = await getUsers({ role: 'Technician,Field Engineer', pageSize: 100 })
+      const response = await getTechnicians({ pageSize: 100 })
       technicians.value = response.items
     } catch {
       ToastService.error('Failed to load technicians')

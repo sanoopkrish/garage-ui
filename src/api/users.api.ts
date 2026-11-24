@@ -88,6 +88,21 @@ export async function getUsers(params?: {
   return { items: data.items ?? [], total: data.total ?? 0 }
 }
 
+/**
+ * Technicians and field engineers, for planning and assigning work. Uses its own endpoint,
+ * which does not need user administration — a receptionist or workshop manager who can
+ * assign work can load this list even though they cannot manage user accounts.
+ */
+export async function getTechnicians(params?: {
+  search?: string
+  page?: number
+  pageSize?: number
+}): Promise<PaginatedUsers> {
+  const response = await api.get('/user/technicians', { params })
+  const data = response.data?.data ?? response.data
+  return { items: data.items ?? [], total: data.total ?? 0 }
+}
+
 export async function getUser(id: string): Promise<User> {
   const response = await api.get(`/user/${id}`)
   return response.data?.data ?? response.data

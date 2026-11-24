@@ -9,37 +9,29 @@ export interface CrudPermissions {
   canAccess: ComputedRef<boolean>
 }
 
-function check(flat: Record<string, boolean> | null, key: string): boolean {
-  if (!flat) return false
-  return !!flat[key]
-}
-
 export function usePermissions(requiredPermissions: string | string[] = []) {
   const authStore = useAuthStore()
 
-  const flat = computed(() => authStore.userPermissionsFlat ?? {})
   const isAdmin = computed(() => authStore.userPermissions?.isAdmin === true)
 
   const permArray = computed(() =>
     Array.isArray(requiredPermissions) ? requiredPermissions : [requiredPermissions],
   )
 
+  // authStore.can() applies the admin override AND the company's module switches
   const hasPermission = computed(() => {
-    if (isAdmin.value) return true
-    if (permArray.value.length !== 1) return false
-    return check(flat.value, permArray.value[0])
+    if (permArray.value.length !== 1) return isAdmin.value
+    return authStore.can(permArray.value[0])
   })
 
   const hasAnyPermission = computed(() => {
-    if (isAdmin.value) return true
     if (permArray.value.length === 0) return true
-    return permArray.value.some(k => check(flat.value, k))
+    return permArray.value.some(k => authStore.can(k))
   })
 
   const hasAllPermissions = computed(() => {
-    if (isAdmin.value) return true
     if (permArray.value.length === 0) return true
-    return permArray.value.every(k => check(flat.value, k))
+    return permArray.value.every(k => authStore.can(k))
   })
 
   return { hasPermission, hasAnyPermission, hasAllPermissions, canAccess: hasAnyPermission, isAdmin }
@@ -80,22 +72,14 @@ export const vPermission = {
     const { value } = binding
     if (!value) return
     const authStore = useAuthStore()
-    if (authStore.userPermissions?.isAdmin) return
-    const flat = authStore.userPermissionsFlat ?? {}
-    const hasAccess = Array.isArray(value)
-      ? value.some((k: string) => !!flat[k])
-      : !!flat[value]
+    const hasAccess = Array.isArray(value) ? value.some((k: string) => authStore.can(k)) : authStore.can(value)
     if (!hasAccess) el.style.display = 'none'
   },
   updated(el: HTMLElement, binding: any) {
     const { value } = binding
     if (!value) return
     const authStore = useAuthStore()
-    if (authStore.userPermissions?.isAdmin) { el.style.display = ''; return }
-    const flat = authStore.userPermissionsFlat ?? {}
-    const hasAccess = Array.isArray(value)
-      ? value.some((k: string) => !!flat[k])
-      : !!flat[value]
+    const hasAccess = Array.isArray(value) ? value.some((k: string) => authStore.can(k)) : authStore.can(value)
     el.style.display = hasAccess ? '' : 'none'
   },
 }

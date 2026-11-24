@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/vehicle.enum.ts
-// Generated at: 2026-11-12T12:26:11.627Z
+// Generated at: 2026-11-20T14:35:16.008Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum FuelType {

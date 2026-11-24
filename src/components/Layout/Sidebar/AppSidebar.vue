@@ -29,6 +29,8 @@ interface NavItem {
   ownerOnly?: boolean
   /** Read-permission key(s) — item shown if the user has ANY of them; admin sees all */
   permissionKey?: string | string[]
+  /** Module this item belongs to when it has no permission key — hidden when the owner switches the module off */
+  module?: string
   /** Purchasing switch (Settings → Purchasing) that must be on for the item to show */
   feature?: 'purchasing' | 'bills' | 'stock'
 }
@@ -54,7 +56,7 @@ const nav: NavItem[] = [
   // Assets (Sprint 21)
   { label: 'Asset register', to: '/assets', icon: ScanLine, section: 'Assets', permissionKey: 'menus.assets.register.read' },
   // HR (Sprint 18): My Week is self-service — every employee has one, so no permission key
-  { label: 'My Week',      to: '/hr/my-week',    icon: CalendarCheck,  section: 'HR' },
+  { label: 'My Week',      to: '/hr/my-week',    icon: CalendarCheck,  section: 'HR', module: 'hr' },
   { label: 'Attendance',   to: '/hr/attendance', icon: Clock,          section: 'HR',       permissionKey: 'menus.hr.attendance.read' },
   { label: 'Timesheets',   to: '/hr/timesheets', icon: ClipboardCheck, section: 'HR',       permissionKey: 'menus.hr.timesheets.read' },
   { label: 'Companies',    to: '/admin/companies',   icon: Building2,  section: 'Admin', ownerOnly: true },
@@ -83,11 +85,12 @@ const nav: NavItem[] = [
 ]
 
 function hasMenuAccess(item: NavItem): boolean {
-  if (authStore.userPermissions?.isAdmin) return true
+  // The owner's module switch comes first, for everyone (items with no permission key included)
+  if (item.module && !authStore.moduleEnabled(item.module)) return false
   if (!item.permissionKey) return true
-  const flat = authStore.userPermissionsFlat ?? {}
+  // can() lets admins through except for modules the owner has switched off for this company
   const keys = Array.isArray(item.permissionKey) ? item.permissionKey : [item.permissionKey]
-  return keys.some((key) => !!flat[key])
+  return keys.some((key) => authStore.can(key))
 }
 
 const grouped = computed(() => {
@@ -109,7 +112,7 @@ const isActive = (to: string) => route.path.startsWith(to)
 
 // the purchasing switches decide which Purchasing items show; only asked for when the user can see purchasing at all
 onMounted(() => {
-  if (authStore.userPermissions?.isAdmin || authStore.userPermissionsFlat?.['menus.finance.procurement.read']) procurement.fetchSettings()
+  if (authStore.can('menus.finance.procurement.read')) procurement.fetchSettings()
 })
 </script>
 

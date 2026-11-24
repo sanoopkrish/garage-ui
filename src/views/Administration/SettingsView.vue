@@ -24,6 +24,9 @@ const { hasPermission: canSeeNotify } = usePermissions('menus.administration.set
 const { hasPermission: canSeeIntegrations } = usePermissions('menus.administration.settings.integrations.read')
 const { hasPermission: canSeeSecurity } = usePermissions('menus.administration.settings.security.read')
 const { hasPermission: canSeeDashboard } = usePermissions('menus.administration.settings.dashboard.read')
+// The same keys the API asks for on these three loads
+const { hasAnyPermission: canLoadCompany } = usePermissions(['menus.administration.company.general.read', 'menus.administration.settings.business.read'])
+const { hasPermission: canLoadNotifySettings } = usePermissions('menus.administration.settings.notifications.companySettings.read')
 
 const tabs = computed(() => [
   ...(canSeeBusiness.value ? [{ key: 'business', label: 'Business', icon: Building2 }] : []),
@@ -158,10 +161,10 @@ watch(
 )
 
 onMounted(async () => {
+  // Each tab has its own permission — only load what this user may see
   await Promise.all([
-    companyStore.fetchCompany(),
-    companyStore.fetchCompanySettings(),
-    companyStore.fetchNotificationSettings(),
+    ...(canLoadCompany.value ? [companyStore.fetchCompany(), companyStore.fetchCompanySettings()] : []),
+    ...(canLoadNotifySettings.value ? [companyStore.fetchNotificationSettings()] : []),
   ])
 })
 

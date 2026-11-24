@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import type { AuthUser } from '@/types/auth'
+import { isPermissionPathEnabled } from '@/types/generated/constants/module-configuration'
 
 const MOCK_MODE = import.meta.env.VITE_MOCK_AUTH === 'true'
 
@@ -44,6 +45,20 @@ export const useAuthStore = defineStore('auth', {
       state.user ? `${state.user.firstName} ${state.user.lastName}` : '',
     profilePhotoUrl: (state) => state.user?.profilePhoto || null,
     userCompany: (state) => state.user?.company || null,
+    /**
+     * The one permission check for the whole UI. A role with admin override passes every
+     * check EXCEPT for a module or submodule the owner has switched off for this company —
+     * the module switches outrank the override, the same rule the API enforces.
+     */
+    can: (state) => (key: string): boolean => {
+      if (state.userPermissions?.isAdmin) {
+        return isPermissionPathEnabled(key, state.user?.company?.moduleConfiguration?.enabledModules)
+      }
+      return !!state.userPermissionsFlat?.[key]
+    },
+    /** Is a whole module ('hr', 'assets', …) switched on for this company? For screens with no permission key, such as My Week. */
+    moduleEnabled: (state) => (moduleKey: string): boolean =>
+      isPermissionPathEnabled(`menus.${moduleKey}`, state.user?.company?.moduleConfiguration?.enabledModules),
     /** Holds ONLY Technician/Field Engineer roles — lands on the mobile field views (Module 8) */
     isFieldWorkerOnly: (state) => {
       const roles = state.userRoles ?? []

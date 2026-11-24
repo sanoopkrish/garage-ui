@@ -12,7 +12,7 @@ import { ChevronLeft, ChevronRight, UserPlus, MapPin, CalendarRange } from 'luci
 import { getSchedule, assignTechnician } from '@/api/jobs.api'
 import type { Job } from '@/api/jobs.api'
 import { WorkLocation } from '@/types/generated/enums/job'
-import { getUsers } from '@/api/users.api'
+import { getTechnicians } from '@/api/users.api'
 import type { User } from '@/api/users.api'
 import { usePermissions } from '@/composables/usePermissions'
 import { jobStatusLabels, jobStatusBadgeVariant } from '@/utils/jobStatus'
@@ -154,7 +154,7 @@ async function openAssign(job: Job, date: string) {
   assignForm.days = 1
   if (technicians.value.length === 0) {
     try {
-      const response = await getUsers({ role: 'Technician,Field Engineer', pageSize: 100 })
+      const response = await getTechnicians({ pageSize: 100 })
       technicians.value = response.items
     } catch {
       ToastService.error('Failed to load technicians')
