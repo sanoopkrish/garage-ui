@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import UiModal from '@/components/Ui/UiModal.vue'
+import GeneralSliderPanel from '@/components/Ui/GeneralSliderPanel.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiToggle from '@/components/Ui/UiToggle.vue'
 import InvoiceLinesEditor, { type EditableLine } from '@/components/Invoices/InvoiceLinesEditor.vue'
@@ -8,6 +8,7 @@ import { updateInvoice, type Invoice } from '@/api/invoices.api'
 import { InvoiceLineType } from '@/types/generated/enums/invoice'
 import { CustomerType } from '@/types/generated/enums/customer'
 import { ToastService } from '@/services/toast.service'
+import { showConfirmDialog } from '@/utils/alert'
 
 const props = defineProps<{ open: boolean; invoice: Invoice | null }>()
 const emit = defineEmits<{ close: []; saved: [invoice: Invoice] }>()
@@ -22,7 +23,7 @@ const lineTypeOptions = [
 
 let keySeq = 0
 const lines = ref<EditableLine[]>([])
-const form = reactive({ notes: '', vatRatePercent: 20, tradeCreditEnabled: false, tradeCreditAmount: '' as string | number })
+const form = reactive({ notes: '', mileage: '' as string | number, vatRatePercent: 20, tradeCreditEnabled: false, tradeCreditAmount: '' as string | number })
 const saving = ref(false)
 
 /** Trade credit switch (Sprint 20) — trade accounts only */
@@ -36,7 +37,9 @@ watch(() => props.open, (open) => {
       description: l.description,
       quantity: l.quantity,
       unitPrice: Number(l.unitPrice),
+      priceListItemId: l.priceListItemId ?? undefined,
     }))
+    form.mileage = props.invoice.mileage ?? ''
     form.notes = props.invoice.notes ?? ''
     form.vatRatePercent = Number(props.invoice.vatRatePercent)
     form.tradeCreditEnabled = props.invoice.tradeCreditEnabled ?? false
@@ -53,16 +56,24 @@ async function save() {
     ToastService.error('Enter a trade credit amount, or switch trade credit off')
     return
   }
+  if (lines.value.some((l) => l.priceListItemId && !(Number(l.unitPrice) > 0))) {
+    const result = await showConfirmDialog('One or more items still have no price (£0.00). Save anyway?', false, 'Save')
+    if (!result.isConfirmed) return
+  }
+  const mileage = form.mileage === '' ? null : Math.round(Number(form.mileage))
+  if (mileage !== null && !(mileage >= 0)) { ToastService.error('Mileage must be a number'); return }
   saving.value = true
   try {
     const updated = await updateInvoice(props.invoice.id, {
       notes: form.notes.trim(),
+      mileage,
       vatRatePercent: Number(form.vatRatePercent),
       lines: lines.value.map((l) => ({
         lineType: l.lineType as InvoiceLineType,
         description: l.description.trim(),
         quantity: Number(l.quantity) || 1,
         unitPrice: Number(l.unitPrice) || 0,
+        ...(l.priceListItemId ? { priceListItemId: l.priceListItemId } : {}),
       })),
       ...(isTrade.value ? { tradeCreditEnabled: form.tradeCreditEnabled, tradeCreditAmount: creditAmount } : {}),
     })
@@ -79,13 +90,23 @@ async function save() {
 </script>
 
 <template>
-  <UiModal :open="open" :title="`Edit ${invoice?.invoiceNumber ?? ''} (draft)`" size="lg" @close="emit('close')">
-    <div class="space-y-4">
+  <!-- A slide-in panel rather than a modal: room for the lines, and the job stays visible behind it.
+       Clicking outside does not close it, so unsaved lines are not lost by accident. -->
+  <GeneralSliderPanel
+    :modelValue="open"
+    :title="`${invoice?.invoiceNumber ?? 'Invoice'} — draft`"
+    :subtitle="[invoice?.customerName, invoice?.jobNumber].filter(Boolean).join(' · ')"
+    size="2xl"
+    :closeOnBackdrop="false"
+    @update:modelValue="(v: boolean) => { if (!v) emit('close') }"
+  >
+    <div class="space-y-5">
       <InvoiceLinesEditor
         v-model="lines"
         v-model:vatRatePercent="form.vatRatePercent"
         :lineTypeOptions="lineTypeOptions"
         :defaultLineType="InvoiceLineType.OTHER"
+        :priceList="{ customerId: invoice?.customerId }"
       />
 
       <div v-if="isTrade" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-100 dark:border-dark-border px-3 py-2.5">
@@ -100,6 +121,12 @@ async function save() {
         </label>
       </div>
 
+      <div class="w-48">
+        <label class="block text-xs font-medium text-slate-500 mb-1">Vehicle mileage (shown on the invoice)</label>
+        <input v-model="form.mileage" type="number" min="0" step="1" placeholder="e.g. 42899"
+          class="w-full rounded-lg border border-slate-200 dark:border-dark-border bg-white dark:bg-dark-surface px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400" />
+      </div>
+
       <div>
         <label class="block text-xs font-medium text-slate-500 mb-1">Notes (shown on the invoice)</label>
         <textarea v-model="form.notes" rows="2"
@@ -107,8 +134,10 @@ async function save() {
       </div>
     </div>
     <template #footer>
-      <UiButton variant="ghost" @click="emit('close')">Cancel</UiButton>
-      <UiButton :loading="saving" @click="save">Save changes</UiButton>
+      <div class="flex justify-end gap-2">
+        <UiButton variant="ghost" @click="emit('close')">Cancel</UiButton>
+        <UiButton :loading="saving" @click="save">Save invoice</UiButton>
+      </div>
     </template>
-  </UiModal>
+  </GeneralSliderPanel>
 </template>

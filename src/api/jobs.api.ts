@@ -578,3 +578,35 @@ export async function createRework(jobId: string, complaintDescription: string):
   const response = await api.post(`/jobs/${jobId}/rework`, { complaintDescription })
   return response.data?.data ?? response.data
 }
+
+// ── Sprint 32: work-to-invoice lines on a job ────────────────────────────────
+
+export interface JobItem {
+  id: string
+  priceListItemId: string | null
+  description: string
+  quantity: number
+  /** absent for technician accounts (no pricing) */
+  unitPrice?: number | null
+  lineTotal?: number | null
+}
+
+export interface JobItemInput {
+  priceListItemId?: string
+  description?: string
+  quantity?: number
+  /** omit to use the price that applies to the job's customer; null = not priced yet */
+  unitPrice?: number | null
+}
+
+export async function getJobItems(jobId: string): Promise<JobItem[]> {
+  const response = await api.get(`/jobs/${jobId}/items`)
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
+}
+
+export async function setJobItems(jobId: string, items: JobItemInput[]): Promise<JobItem[]> {
+  const response = await api.put(`/jobs/${jobId}/items`, { items })
+  const data = response.data?.data ?? response.data
+  return data.items ?? []
+}

@@ -10,7 +10,7 @@ import {
   LayoutDashboard, Wrench, Users, Car, UserCog,
   CalendarDays, Package, FileText, Settings, ChevronLeft, ChevronRight,
   Gauge, Shield, UsersRound, Database, Building2, ScrollText,
-  Mail, Hash, Clock, CalendarCheck, ClipboardCheck, ShoppingCart, ReceiptText, Truck, Boxes, ChartColumn, ScanLine, CalendarRange,
+  Mail, Hash, Clock, CalendarCheck, ClipboardCheck, ShoppingCart, ReceiptText, Truck, Boxes, ChartColumn, ScanLine, CalendarRange, Tags,
 } from 'lucide-vue-next'
 
 const route = useRoute()
@@ -44,6 +44,7 @@ const nav: NavItem[] = [
   { label: 'Vehicles',     to: '/vehicles',     icon: Car,             section: 'CRM',      permissionKey: 'menus.crm.vehicles.read' },
   { label: 'Technicians',  to: '/technicians',  icon: UserCog,         section: 'Team',     permissionKey: 'menus.team.technicians.read' },
   { label: 'Invoices',     to: '/invoices',     icon: FileText,        section: 'Finance',  permissionKey: 'menus.finance.invoices.read' },
+  { label: 'Price List',   to: '/finance/price-list', icon: Tags,      section: 'Finance',  permissionKey: 'menus.finance.priceList.read' },
   // Purchasing (Sprint 23) — hidden when switched off in Settings → Purchasing
   { label: 'Orders',            to: '/procurement/orders',    icon: ShoppingCart, section: 'Purchasing', permissionKey: 'menus.finance.procurement.read', feature: 'purchasing' },
   { label: 'Supplier Invoices', to: '/procurement/bills',     icon: ReceiptText,  section: 'Purchasing', permissionKey: 'menus.finance.procurement.read', feature: 'bills' },

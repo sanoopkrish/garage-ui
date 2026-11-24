@@ -21,6 +21,8 @@ export interface InvoiceLine {
   quantity: number
   unitPrice: number
   lineTotal: number
+  /** Sprint 32 — price list item the line was picked from */
+  priceListItemId?: string | null
 }
 
 export interface InvoicePayment {
@@ -48,6 +50,8 @@ export interface Invoice {
   issuedAt?: string
   dueDate?: string
   notes?: string
+  /** Sprint 32 — vehicle mileage printed on the invoice */
+  mileage?: number | null
   lines: InvoiceLine[]
   payments: InvoicePayment[]
   netTotal: number
@@ -129,12 +133,14 @@ export interface UpdateInvoiceLineInput {
   description: string
   quantity: number
   unitPrice: number
+  priceListItemId?: string
 }
 
 export async function updateInvoice(
   id: string,
   payload: {
     notes?: string
+    mileage?: number | null
     vatRatePercent?: number
     lines?: UpdateInvoiceLineInput[]
     tradeCreditEnabled?: boolean

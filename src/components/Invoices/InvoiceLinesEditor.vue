@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import { Plus, Trash2 } from 'lucide-vue-next'
 import { gbp } from '@/utils/invoiceStatus'
+import PriceListPicker from '@/components/PriceList/PriceListPicker.vue'
+import type { PriceListPickRow } from '@/api/price-list.api'
 
 /**
  * Shared net-lines editor for draft invoices and credit notes (Sprint 20 extraction
@@ -16,6 +18,8 @@ export interface EditableLine {
   unitPrice: number
   /** carried through untouched (credit notes: the invoice line being credited) */
   invoiceLineId?: string
+  /** Sprint 32 — the price list item the line was picked from */
+  priceListItemId?: string
 }
 
 const props = defineProps<{
@@ -24,6 +28,8 @@ const props = defineProps<{
   lineTypeOptions: { value: string; label: string }[]
   defaultLineType: string
   totalLabel?: string
+  /** Sprint 32 — show the price list picker; prices resolve for this customer */
+  priceList?: { customerId?: string }
 }>()
 const emit = defineEmits<{ 'update:modelValue': [lines: EditableLine[]]; 'update:vatRatePercent': [value: number] }>()
 
@@ -34,6 +40,14 @@ const vat = computed({ get: () => props.vatRatePercent, set: (v) => emit('update
 function addLine() {
   lines.value = [...lines.value, { key: keySeq++, lineType: props.defaultLineType, description: '', quantity: 1, unitPrice: 0 }]
 }
+/** A price list item becomes a line; one with no fixed price comes in at £0 for the office to price */
+function addFromPriceList(row: PriceListPickRow) {
+  lines.value = [...lines.value, {
+    key: keySeq++, lineType: row.lineType, description: row.name, quantity: 1, unitPrice: row.price ?? 0, priceListItemId: row.id,
+  }]
+}
+/** Picked from the price list but still without a price */
+const needsPrice = (line: EditableLine) => !!line.priceListItemId && !(Number(line.unitPrice) > 0)
 function removeLine(key: number) {
   lines.value = lines.value.filter((l) => l.key !== key)
 }
@@ -66,7 +80,11 @@ const inputClass = 'w-full rounded-lg border border-slate-200 dark:border-dark-b
             </td>
             <td class="py-1.5 pr-2"><input v-model="line.description" type="text" placeholder="Description" :class="inputClass" /></td>
             <td class="py-1.5 pr-2"><input v-model.number="line.quantity" type="number" min="1" max="999" :class="[inputClass, 'text-right']" /></td>
-            <td class="py-1.5 pr-2"><input v-model.number="line.unitPrice" type="number" min="0" step="0.01" :class="[inputClass, 'text-right']" /></td>
+            <td class="py-1.5 pr-2">
+              <input v-model.number="line.unitPrice" type="number" min="0" step="0.01"
+                :title="needsPrice(line) ? 'This item has no fixed price — enter it' : undefined"
+                :class="[inputClass, 'text-right', needsPrice(line) ? 'border-amber-400 ring-1 ring-amber-300' : '']" />
+            </td>
             <td class="py-1.5 pr-2 text-right font-medium text-slate-700 dark:text-slate-200">
               {{ gbp((Number(line.quantity) || 0) * (Number(line.unitPrice) || 0)) }}
             </td>
@@ -77,14 +95,19 @@ const inputClass = 'w-full rounded-lg border border-slate-200 dark:border-dark-b
             </td>
           </tr>
           <tr v-if="lines.length === 0">
-            <td colspan="6" class="py-4 text-center text-sm text-slate-400">No lines yet — add one.</td>
+            <td colspan="6" class="py-4 text-center text-sm text-slate-400">
+              {{ priceList ? 'No lines yet — add an item from the price list, or type a line.' : 'No lines yet — add one.' }}
+            </td>
           </tr>
         </tbody>
       </table>
     </div>
 
     <div class="flex items-center justify-between">
-      <UiButton variant="secondary" size="sm" @click="addLine"><Plus class="w-3.5 h-3.5" /> Add line</UiButton>
+      <div class="flex items-center gap-2">
+        <PriceListPicker v-if="priceList" :customerId="priceList.customerId" @pick="addFromPriceList" />
+        <UiButton variant="secondary" size="sm" @click="addLine"><Plus class="w-3.5 h-3.5" /> Add line</UiButton>
+      </div>
       <div class="flex items-center gap-4 text-sm">
         <label class="flex items-center gap-2 text-slate-500 whitespace-nowrap">VAT %
           <input v-model.number="vat" type="number" min="0" max="100" :class="[inputClass, 'w-16 text-right']" />

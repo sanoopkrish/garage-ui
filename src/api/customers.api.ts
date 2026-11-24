@@ -14,6 +14,8 @@ export interface Customer {
   name: string
   businessName?: string
   email?: string
+  /** Sprint 32 — extra addresses that also receive invoices, statements and credit notes */
+  invoiceEmails?: string[]
   phone?: string
   vatNumber?: string
   billingAddress?: BillingAddress
@@ -35,6 +37,7 @@ export interface CreateCustomerDto {
   name: string
   businessName?: string
   email?: string
+  invoiceEmails?: string[]
   phone?: string
   vatNumber?: string
   billingAddress?: BillingAddress

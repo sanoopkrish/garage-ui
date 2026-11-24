@@ -62,6 +62,19 @@ export interface ProcurementSettings {
   fieldReceiptCapture: boolean
 }
 
+/** Sprint 32 — Settings → Billing → "Invoice layout" */
+export interface InvoiceLayoutSettings {
+  showVatColumn: boolean
+  showVehicleDetails: boolean
+  showCustomerContact: boolean
+}
+
+export const DEFAULT_INVOICE_LAYOUT: InvoiceLayoutSettings = {
+  showVatColumn: true,
+  showVehicleDetails: true,
+  showCustomerContact: true,
+}
+
 /** Sprint 26 — Settings → Billing → "Attach to invoice emails" */
 export interface InvoiceEmailAttachmentSettings {
   invoicePdf: boolean
@@ -132,6 +145,10 @@ export interface CompanySettings {
   invoiceEmailAttachments?: Partial<InvoiceEmailAttachmentSettings>
   /** Sprint 27 — automatic status rules */
   statusAutomation?: Partial<StatusAutomationSettings>
+  /** Sprint 32 — invoice PDF layout, header note and terms */
+  invoiceLayout?: Partial<InvoiceLayoutSettings>
+  invoiceHeaderNote?: string
+  invoiceTerms?: string
   /** Sprint 27 — planner hours for a job with no approved quoted labour (default 4) */
   defaultJobHours?: number
   passwordMinLength?: number

@@ -259,6 +259,14 @@ const routes = [
     meta: { title: 'Suppliers', requiresAuth: true, permissionKey: 'menus.finance.suppliers.read' },
   },
 
+  // Price list (Sprint 32)
+  {
+    path: '/finance/price-list',
+    name: 'finance-price-list',
+    component: () => import('@/views/PriceList/PriceListView.vue'),
+    meta: { title: 'Price List', requiresAuth: true, permissionKey: 'menus.finance.priceList.read' },
+  },
+
   // Companies — owner/platform domain only
   {
     path: '/admin/companies',

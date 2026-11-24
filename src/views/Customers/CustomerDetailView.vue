@@ -8,6 +8,7 @@ import { ArrowLeft, Phone, Mail, Car, Wrench, FileText, ShieldCheck, Download, E
 import { getCreditNotesForCustomer, type CreditNote } from '@/api/credit-notes.api'
 import { creditNoteReasonLabels, creditNoteStatusLabels, creditNoteStatusVariant } from '@/utils/creditNoteStatus'
 import { gbp } from '@/utils/invoiceStatus'
+import CustomerPricesCard from '@/components/PriceList/CustomerPricesCard.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCustomersStore } from '@/stores/customers.store'
 import { gdprExportCustomer, gdprEraseCustomer } from '@/api/customers.api'
@@ -147,6 +148,7 @@ onMounted(async () => {
             <a v-if="customer.email" :href="`mailto:${customer.email}`" class="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-600">
               <Mail class="w-4 h-4 text-brand-500 flex-shrink-0" /> {{ customer.email }}
             </a>
+            <p v-if="customer.invoiceEmails?.length" class="text-xs text-slate-400 pl-6">Invoices also go to: {{ customer.invoiceEmails.join(', ') }}</p>
             <a v-if="customer.phone" :href="`tel:${customer.phone}`" class="flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-brand-600">
               <Phone class="w-4 h-4 text-brand-500 flex-shrink-0" /> {{ customer.phone }}
             </a>
@@ -169,6 +171,9 @@ onMounted(async () => {
             <div class="flex justify-between"><span class="text-slate-400">Trade Credit</span><span class="font-medium text-slate-700 dark:text-slate-200">{{ customer.tradeCreditAmount ? `${gbp(customer.tradeCreditAmount)} per invoice (${customer.tradeCreditVatInclusive === false ? 'plus VAT' : 'inc. VAT'})` : 'None' }}</span></div>
           </div>
         </div>
+
+        <!-- Sprint 32 — agreed prices for trade accounts -->
+        <CustomerPricesCard v-if="isB2b" :customerId="customer.id" />
 
         <!-- Credit notes (Sprint 20) -->
         <div v-if="canSeeCreditNotes && creditNotes.length" class="card">

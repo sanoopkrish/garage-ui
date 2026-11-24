@@ -21,6 +21,9 @@ import { ToastService } from '@/services/toast.service'
 import { JobStatus, WorkLocation } from '@/types/generated/enums/job'
 import { jobStatusLabels, jobStatusBadgeVariant } from '@/utils/jobStatus'
 import type { Job } from '@/api/jobs.api'
+import { setJobItems } from '@/api/jobs.api'
+import PriceListPicker from '@/components/PriceList/PriceListPicker.vue'
+import type { PriceListPickRow } from '@/api/price-list.api'
 import { showConfirmDialog } from '@/utils/alert'
 
 const jobsStore = useJobsStore()
@@ -102,6 +105,16 @@ const form = reactive({
 })
 
 const formErrors = reactive({ customerId: '', vehicleId: '', description: '' })
+
+// Sprint 32 — fixed-price work picked from the price list while booking; saved as the job's work to invoice
+const workItems = ref<{ key: number; id: string; name: string }[]>([])
+let workItemKey = 0
+function addWorkItem(row: PriceListPickRow) {
+  workItems.value = [...workItems.value, { key: workItemKey++, id: row.id, name: row.name }]
+}
+function removeWorkItem(key: number) {
+  workItems.value = workItems.value.filter((w) => w.key !== key)
+}
 
 /** Server-side search by customer name / business name (the list can be long). */
 let customerSearchSeq = 0
@@ -198,6 +211,7 @@ watch(() => form.customerId, async (customerId) => {
 
 function openCreateModal() {
   form.customerId = ''
+  workItems.value = []
   form.vehicleId = ''
   form.description = ''
   form.status = JobStatus.ENQUIRY
@@ -227,7 +241,7 @@ async function submitForm() {
 
   submitting.value = true
   try {
-    await jobsStore.createJob({
+    const created = await jobsStore.createJob({
       customerId: form.customerId,
       vehicleId: form.vehicleId,
       description: form.description.trim(),
@@ -243,6 +257,11 @@ async function submitForm() {
         : undefined,
       quoteRequired: form.quoteRequired === 'inherit' ? undefined : form.quoteRequired === 'yes',
     })
+    if (created?.id && workItems.value.length && form.quoteRequired !== 'yes') {
+      // prices come from the price list for this customer; a failure here must not lose the job
+      await setJobItems(created.id, workItems.value.map((w) => ({ priceListItemId: w.id })))
+        .catch(() => ToastService.error('Job created, but the work to invoice could not be saved — add it on the job'))
+    }
     ToastService.success('Job created')
     showModal.value = false
   } catch (err: any) {
@@ -449,6 +468,17 @@ onMounted(() => {
         <div class="grid grid-cols-2 gap-4">
           <UiSelect v-model="form.workLocation" label="Work location" :options="locationOptions" />
           <UiSelect v-model="form.quoteRequired" label="Needs a quote first?" :options="quoteOptions" />
+        </div>
+        <!-- Sprint 32 — fixed-price work, picked from the price list (not for jobs that need a quote) -->
+        <div v-if="form.customerId && form.quoteRequired !== 'yes'">
+          <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Work to invoice <span class="font-normal text-slate-400">(optional)</span></label>
+          <div class="flex flex-wrap items-center gap-2">
+            <span v-for="w in workItems" :key="w.key" class="inline-flex items-center gap-1 rounded-full bg-slate-100 dark:bg-white/10 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200">
+              {{ w.name }}
+              <button type="button" class="text-slate-400 hover:text-red-500" title="Remove" @click="removeWorkItem(w.key)">×</button>
+            </span>
+            <PriceListPicker :customerId="form.customerId" label="Add from price list" @pick="addWorkItem" />
+          </div>
         </div>
         <div v-if="form.workLocation === WorkLocation.ON_SITE" class="rounded-lg border border-slate-200 dark:border-dark-border p-3 space-y-3 bg-slate-50/60 dark:bg-white/5">
           <p class="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5"><MapPin class="w-3.5 h-3.5" /> Site address</p>

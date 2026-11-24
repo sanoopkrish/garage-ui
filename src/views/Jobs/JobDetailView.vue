@@ -11,6 +11,7 @@ import { ArrowLeft, Car, User, ClipboardCheck, KeyRound, StickyNote, History, Ro
 import { WorkLocation } from '@/types/generated/enums/job'
 import JobQuotesCard from '@/components/Jobs/JobQuotesCard.vue'
 import JobInvoiceCard from '@/components/Jobs/JobInvoiceCard.vue'
+import JobItemsCard from '@/components/Jobs/JobItemsCard.vue'
 import JobAssignmentsCard from '@/components/Jobs/JobAssignmentsCard.vue'
 import JobChecklistCard from '@/components/Jobs/JobChecklistCard.vue'
 import JobAttachmentsCard from '@/components/Jobs/JobAttachmentsCard.vue'
@@ -30,6 +31,10 @@ import { jobStatusLabels, jobStatusBadgeVariant } from '@/utils/jobStatus'
 import type { Job } from '@/api/jobs.api'
 
 const route = useRoute()
+// Sprint 32 — set by the Invoices card; Work to invoice is only shown until the job has an invoice
+// null = not known yet (avoids the card flashing up on a job that is already invoiced)
+const jobInvoiced = ref<boolean | null>(null)
+const { hasPermission: canSeeInvoices } = usePermissions('menus.finance.invoices.read')
 const router = useRouter()
 const jobsStore = useJobsStore()
 const { canUpdate, canCreate } = useCrudPermissions('workshop', 'jobs')
@@ -567,10 +572,14 @@ onMounted(load)
         <!-- Sprint 26 — job notes feed (field + office) -->
         <JobNotesCard :jobId="(route.params.id as string)" />
 
-        <JobQuotesCard :jobId="(route.params.id as string)" @changed="load" />
+        <JobQuotesCard :jobId="(route.params.id as string)" :quoteRequired="job.quoteRequired" @changed="load" />
+
+        <!-- Sprint 32 — fixed-price work on a job that needs no quote; the invoice starts from it -->
+        <!-- Hidden once the job has an invoice (draft or issued): from then on the invoice is the record. A void invoice brings it back. -->
+        <JobItemsCard v-if="!job.quoteRequired && (jobInvoiced === false || !canSeeInvoices)" :jobId="(route.params.id as string)" :customerId="job.customerId" />
 
         <!-- Invoices (Module 9) -->
-        <JobInvoiceCard :jobId="(route.params.id as string)" :customerId="job.customerId" @changed="load" />
+        <JobInvoiceCard :jobId="(route.params.id as string)" :customerId="job.customerId" :quoteRequired="job.quoteRequired" @changed="load" @invoiced="(v: boolean) => (jobInvoiced = v)" />
 
         <!-- Timeline -->
         <div class="card">

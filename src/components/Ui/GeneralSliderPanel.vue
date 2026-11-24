@@ -103,7 +103,7 @@ interface Props {
   modelValue: boolean;
   title?: string;
   subtitle?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
   position?: 'left' | 'right';
   hideHeader?: boolean;
   hideCloseButton?: boolean;
@@ -162,6 +162,7 @@ const sizeClasses = computed(() => {
     md: 'w-96 max-w-md',
     lg: 'w-full max-w-lg',
     xl: 'w-full max-w-2xl',
+    '2xl': 'w-full max-w-4xl', // wide editors (invoice lines)
     full: 'w-full'
   };
   return sizeMap[props.size];

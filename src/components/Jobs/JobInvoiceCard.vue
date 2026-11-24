@@ -19,8 +19,13 @@ import { useCrudPermissions, usePermissions } from '@/composables/usePermissions
 import { ToastService } from '@/services/toast.service'
 import { showConfirmDialog } from '@/utils/alert'
 
-const props = defineProps<{ jobId: string; customerId?: string }>()
-const emit = defineEmits<{ (e: 'changed'): void }>()
+/** `quoteRequired` false (Sprint 32) → the invoice is created straight from the job, no quote needed */
+const props = defineProps<{ jobId: string; customerId?: string; quoteRequired?: boolean }>()
+const emit = defineEmits<{
+  (e: 'changed'): void
+  /** Sprint 32 — whether the job has an invoice that is not void (the job page hides Work to invoice once it does) */
+  (e: 'invoiced', hasLiveInvoice: boolean): void
+}>()
 
 const { canCreate, canRead: canViewInvoices } = useCrudPermissions('finance', 'invoices')
 const { hasPermission: canSend } = usePermissions('menus.finance.invoices.send')
@@ -29,6 +34,8 @@ const { hasPermission: canUpdate } = usePermissions('menus.finance.invoices.upda
 const editingInvoice = ref<Invoice | null>(null)
 
 const invoices = ref<Invoice[]>([])
+/** A voided invoice does not stop a new one being created (the API allows it) */
+const hasLiveInvoice = computed(() => invoices.value.some((i) => i.status !== InvoiceStatus.VOID))
 const loading = ref(true)
 
 // ── Trade credit switch (Sprint 20) — trade (B2B) accounts with a credit amount only ──
@@ -54,6 +61,7 @@ async function load() {
   loading.value = true
   try {
     invoices.value = await getInvoicesForJob(props.jobId)
+    emit('invoiced', hasLiveInvoice.value)
   } catch {
     ToastService.error('Failed to load invoices')
   } finally {
@@ -68,9 +76,16 @@ function apiError(err: any, fallback: string) {
 
 async function handleGenerate() {
   try {
-    await generateInvoice(props.jobId, tradeCreditAmount.value != null ? { tradeCreditEnabled: applyTradeCredit.value } : undefined)
-    ToastService.success('Draft invoice generated from approved quote')
+    const created = await generateInvoice(props.jobId, tradeCreditAmount.value != null ? { tradeCreditEnabled: applyTradeCredit.value } : undefined)
     await load()
+    // Sprint 32 — a direct invoice with nothing on it yet, or with items still to price, opens for editing straight away
+    const unfinished = created.lines.length === 0 || created.lines.some((l) => !(Number(l.unitPrice) > 0))
+    if (unfinished && canUpdate.value) {
+      ToastService.success(created.lines.length ? 'Draft invoice created — check the prices' : 'Draft invoice created — add the items')
+      editingInvoice.value = invoices.value.find((i) => i.id === created.id) ?? created
+    } else {
+      ToastService.success('Draft invoice created')
+    }
   } catch (err: any) {
     apiError(err, 'Failed to generate invoice')
   }
@@ -145,18 +160,21 @@ onMounted(() => { load(); loadCustomer() })
         <Receipt class="w-4 h-4 text-brand-500" />
         <h2 class="text-base font-semibold text-slate-800 dark:text-slate-100">Invoices</h2>
       </div>
-      <UiButton v-if="canCreate && invoices.length === 0" variant="secondary" @click="handleGenerate">
-        <Plus class="w-4 h-4" /> Generate from Quote
+      <UiButton v-if="canCreate && !loading && !hasLiveInvoice" variant="secondary" @click="handleGenerate">
+        <Plus class="w-4 h-4" /> {{ quoteRequired ? 'Generate from Quote' : 'Create invoice' }}
       </UiButton>
     </div>
 
     <p v-if="loading" class="text-sm text-slate-400 animate-pulse">Loading invoices…</p>
     <p v-else-if="invoices.length === 0" class="text-sm text-slate-400">
-      {{ canCreate
+      <template v-if="quoteRequired">{{ canCreate
         ? 'No invoice yet — generate one once the quote is approved.'
-        : 'No invoice yet — Accounts (or an admin) generates it from the approved quote.' }}
+        : 'No invoice yet — Accounts (or an admin) generates it from the approved quote.' }}</template>
+      <template v-else>{{ canCreate
+        ? 'No invoice yet — this job needs no quote, so create the invoice whenever the work is agreed.'
+        : 'No invoice yet — Accounts (or an admin) creates it.' }}</template>
     </p>
-    <div v-if="!loading && invoices.length === 0 && canCreate && tradeCreditAmount != null" class="mt-3 rounded-lg border border-slate-100 dark:border-dark-border px-3 py-2.5">
+    <div v-if="!loading && !hasLiveInvoice && canCreate && tradeCreditAmount != null" class="mt-3 rounded-lg border border-slate-100 dark:border-dark-border px-3 py-2.5">
       <UiToggle
         v-model="applyTradeCredit"
         :label="`Apply trade credit (${gbp(tradeCreditAmount)})`"

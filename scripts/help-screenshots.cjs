@@ -33,6 +33,7 @@ const IDS = {
   jobComplete: '4e800db6-0058-4043-a0b6-80f4ad4255ba',
   customer: '165dec48-1f49-4a02-a8ea-8c34e148edff',
   vehicle: '20d2e035-d47a-4be8-8e8b-8efe39d590d4',
+  jobNoQuote: 'f07a1856-60a2-4fd9-8d16-8fa429a6b9be', // JOB-00001 — no quote needed, work-to-invoice lines (seed:price-list)
   technician: '1b12ba07-69ff-4b55-ad82-8c5774ee3c5c',
   invoice: '46810daf-59fb-41a9-a3ac-ae406d25e67c',
   timesheet: 'ac928f06-27f9-4894-b561-cd6c9bf5a31c',
@@ -151,6 +152,17 @@ async function removeToasts(page) {
   await go(page, '/procurement/bills'); await shot(page, 'supplier-bills')
   await go(page, '/procurement/stock'); await shot(page, 'stock')
   await go(page, '/procurement/suppliers'); await shot(page, 'suppliers')
+  // Sprint 32 — price list, customer prices on an item, and a job invoiced without a quote
+  await go(page, '/finance/price-list'); await shot(page, 'price-list')
+  if (!ONLY || ONLY.has('price-list-customer-prices')) {
+    await page.evaluate(() => {
+      const row = Array.from(document.querySelectorAll('main tr')).find((r) => r.textContent.includes('ADAS - 360'))
+      const btn = row && Array.from(row.querySelectorAll('button')).find((b) => b.querySelector('svg.lucide-users'))
+      btn && btn.click()
+    })
+    await sleep(2500); await shot(page, 'price-list-customer-prices')
+  }
+  await go(page, `/jobs/${IDS.jobNoQuote}`, 2800); await tall(page, 'job-detail-no-quote')
   await go(page, '/procurement/reports', 3000); await tall(page, 'purchasing-reports')
   await go(page, '/assets'); await shot(page, 'assets')
   await go(page, '/hr/timesheets'); await prevWeek(page, DEMO_WEEKS_BACK.timesheets); await shot(page, 'timesheets')
@@ -197,6 +209,7 @@ async function removeToasts(page) {
     ['/vehicles', 'Add Vehicle', 'form-new-vehicle'],
     ['/invoices?tab=credit-notes', 'New credit note', 'form-new-credit-note'],
     ['/procurement/suppliers', 'New supplier', 'form-new-supplier'],
+    ['/finance/price-list', 'New item', 'form-new-price-list-item'],
     ['/procurement/stock', 'New stock item', 'form-new-stock-item'],
     ['/procurement/bills', 'Add supplier invoice', 'form-new-supplier-invoice'],
     ['/assets', 'Add item', 'form-new-asset'],

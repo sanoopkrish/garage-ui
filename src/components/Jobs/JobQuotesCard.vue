@@ -15,7 +15,8 @@ import { usePermissions } from '@/composables/usePermissions'
 import { ToastService } from '@/services/toast.service'
 import { showConfirmDialog } from '@/utils/alert'
 
-const props = defineProps<{ jobId: string }>()
+/** `quoteRequired` false (Sprint 32) and no quotes → the card collapses to one line */
+const props = defineProps<{ jobId: string; quoteRequired?: boolean }>()
 const emit = defineEmits<{ (e: 'changed'): void }>()
 
 const { hasPermission: canCreateQuote } = usePermissions('menus.workshop.jobs.createQuote')
@@ -50,6 +51,7 @@ const statusVariant: Record<QuoteStatus, string> = {
 }
 
 const gbp = (v: number) => `£${Number(v).toFixed(2)}`
+const collapsed = computed(() => props.quoteRequired === false && !loading.value && quotes.value.length === 0)
 
 async function load() {
   if (!canViewPricing.value) return
@@ -230,7 +232,16 @@ onMounted(load)
 </script>
 
 <template>
-  <div v-if="canViewPricing" class="card">
+  <!-- Sprint 32 — a job that needs no quote and has none: one quiet line, the option to add one stays -->
+  <div v-if="canViewPricing" :class="['card', collapsed ? '!py-3' : '']">
+    <div v-if="collapsed" class="flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2 text-sm text-slate-500">
+        <FileText class="w-4 h-4 text-slate-400" />
+        <span><span class="font-medium text-slate-600 dark:text-slate-300">Quotes</span> · No quote needed for this job</span>
+      </div>
+      <button v-if="canCreateQuote" class="text-sm font-medium text-brand-600 hover:underline" @click="openBuilder">Add quote</button>
+    </div>
+    <template v-else>
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <FileText class="w-4 h-4 text-brand-500" />
@@ -286,6 +297,8 @@ onMounted(load)
         </div>
       </div>
     </div>
+
+    </template>
 
     <!-- Quote builder modal -->
     <UiModal :open="showBuilder" title="New Quote" @close="showBuilder = false">

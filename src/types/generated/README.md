@@ -41,5 +41,5 @@ npm run generate:types
 
 ## Generated Files
 
-Last generated: 2026-11-12T12:26:11.644Z
+Last generated: 2026-11-20T14:35:16.018Z
 

@@ -1,6 +1,6 @@
 // Auto-generated from backend constants
 // Source: src/shared/constants/module-configuration.ts
-// Generated at: 2026-11-12T12:26:11.643Z
+// Generated at: 2026-11-20T14:35:16.017Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 
@@ -29,7 +29,7 @@ export const MODULE_SUBMODULES: Record<ModuleKey, readonly string[]> = {
   crm:       ['customers', 'vehicles'],
   team:      ['technicians'],
   stock:     ['inventory'],
-  finance:   ['invoices', 'statements', 'supplierInvoices', 'creditNotes', 'procurement', 'suppliers'],
+  finance:   ['invoices', 'statements', 'supplierInvoices', 'creditNotes', 'procurement', 'suppliers', 'priceList'],
   hr:        ['attendance', 'timesheets'],
   assets:    ['register'],
 };
@@ -127,6 +127,7 @@ export const PERMISSION_LABELS: Record<string, { label: string; description?: st
   register:    { label: 'Asset register', description: 'Diagnostic kit, equipment and tool kits — location, calibration, value' },
   procurement: { label: 'Purchasing',   description: 'Purchase orders, deliveries and supplier invoices' },
   suppliers:   { label: 'Suppliers',    description: 'Supplier records, terms and bank details' },
+  priceList:   { label: 'Price List',   description: 'Saved fixed-price items and customer prices' },
 
   // Administration submodules
   users:        { label: 'Users',         description: 'User account management' },

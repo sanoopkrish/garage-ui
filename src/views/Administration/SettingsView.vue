@@ -8,6 +8,7 @@ import WorkingTimeSettings from '@/components/Settings/WorkingTimeSettings.vue'
 import WorkshopSettings from '@/components/Settings/WorkshopSettings.vue'
 import BrandingSettings from '@/components/Settings/BrandingSettings.vue'
 import InvoiceAttachmentsSettings from '@/components/Settings/InvoiceAttachmentsSettings.vue'
+import InvoiceLayoutSettings from '@/components/Settings/InvoiceLayoutSettings.vue'
 import ProcurementSettings from '@/components/Settings/ProcurementSettings.vue'
 import DashboardDefaultsSettings from '@/components/Settings/DashboardDefaultsSettings.vue'
 import { useCompanyStore } from '@/stores/company.store'
@@ -474,6 +475,11 @@ async function saveNotifications() {
             <!-- Sprint 26 — invoice email attachments (saves on its own) -->
             <div class="pt-4 border-t border-slate-100 dark:border-dark-border">
               <InvoiceAttachmentsSettings />
+            </div>
+
+            <!-- Sprint 32 — invoice PDF layout, header note and terms (saves on its own) -->
+            <div class="pt-4 border-t border-slate-100 dark:border-dark-border">
+              <InvoiceLayoutSettings />
             </div>
           </div>
         </template>

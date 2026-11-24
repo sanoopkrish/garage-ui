@@ -70,6 +70,7 @@ const form = reactive({
   type: CustomerType.B2C as CustomerType,
   name: '',
   email: '',
+  invoiceEmails: '',
   phone: '',
   businessName: '',
   vatNumber: '',
@@ -95,6 +96,7 @@ function resetForm() {
   form.type = CustomerType.B2C
   form.name = ''
   form.email = ''
+  form.invoiceEmails = ''
   form.phone = ''
   form.businessName = ''
   form.vatNumber = ''
@@ -120,6 +122,7 @@ function openEditModal(customer: Customer) {
   form.type = customer.type
   form.name = customer.name
   form.email = customer.email ?? ''
+  form.invoiceEmails = (customer.invoiceEmails ?? []).join(', ')
   form.phone = customer.phone ?? ''
   form.businessName = customer.businessName ?? ''
   form.vatNumber = customer.vatNumber ?? ''
@@ -150,6 +153,7 @@ function buildDto(): CreateCustomerDto {
     type: form.type,
     name: form.name.trim(),
     email: form.email.trim() || undefined,
+    invoiceEmails: extraInvoiceEmails(),
     phone: form.phone.trim() || undefined,
     businessName: isB2b ? form.businessName.trim() || undefined : undefined,
     vatNumber: isB2b ? form.vatNumber.trim() || undefined : undefined,
@@ -161,9 +165,16 @@ function buildDto(): CreateCustomerDto {
   }
 }
 
+/** Sprint 32 — "a@x.com, b@x.com" → ['a@x.com', 'b@x.com'] */
+function extraInvoiceEmails(): string[] {
+  return form.invoiceEmails.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean)
+}
+
 async function submitForm() {
   formErrors.name = form.name.trim() ? '' : 'Name is required'
   if (formErrors.name) return
+  const badEmail = extraInvoiceEmails().find((e) => !/^\S+@\S+\.\S+$/.test(e))
+  if (badEmail) { ToastService.error(`"${badEmail}" is not a valid email address`); return }
 
   submitting.value = true
   try {
@@ -346,6 +357,7 @@ onMounted(() => {
           <UiInput v-model="form.email" label="Email" type="email" placeholder="customer@email.com" />
           <UiInput v-model="form.phone" label="Phone" placeholder="+44 7700 000000" />
         </div>
+        <UiInput v-model="form.invoiceEmails" label="Also send invoices to (separate addresses with commas)" placeholder="accounts@customer.com, manager@customer.com" />
         <UiSelect v-model="form.quoteRequired" label="Quote before work starts" :options="quoteRequiredOptions" />
         <UiInput v-model="form.notes" label="Notes" placeholder="Optional notes" />
       </form>
