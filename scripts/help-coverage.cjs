@@ -17,7 +17,8 @@ const ROUTER = path.resolve(__dirname, '../src/router/index.ts')
 const CONTENT = path.resolve(__dirname, '../../garage-api/src/help/content')
 // Routes that are not screens a user needs help for
 // Owner-only platform screens (Companies) deliberately have no help page
-const IGNORE = new Set(['help', 'tenant-access-denied', 'not-found', 'admin-companies', 'admin-company-create', 'admin-company-edit'])
+// Sprint 29: portal-* routes are the customer-facing app — customers never see the Help Centre, the portal carries its own in-page help
+const IGNORE = new Set(['help', 'tenant-access-denied', 'not-found', 'admin-companies', 'admin-company-create', 'admin-company-edit', 'portal-signin', 'portal-link', 'portal-set-password', 'portal-home', 'portal-job', 'portal-account'])
 
 const routerSrc = fs.readFileSync(ROUTER, 'utf8')
 const routeNames = [...routerSrc.matchAll(/^\s*name:\s*'([a-z0-9-]+)'/gm)].map((m) => m[1]).filter((n) => !IGNORE.has(n))

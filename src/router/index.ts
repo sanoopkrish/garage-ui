@@ -42,6 +42,14 @@ const routes = [
     meta: { title: 'Notifications', requiresAuth: true },
   },
 
+  // Sprint 29 — customer portal: own shell, own session (portal store), never the staff auth
+  { path: '/portal', name: 'portal-signin', component: () => import('@/portal/views/PortalSignInView.vue'), meta: { title: 'Sign in', requiresAuth: false, portal: true } },
+  { path: '/portal/link/:token', name: 'portal-link', component: () => import('@/portal/views/PortalLinkView.vue'), meta: { title: 'Signing in', requiresAuth: false, portal: true } },
+  { path: '/portal/set-password/:token', name: 'portal-set-password', component: () => import('@/portal/views/PortalSetPasswordView.vue'), meta: { title: 'Choose a password', requiresAuth: false, portal: true } },
+  { path: '/portal/home', name: 'portal-home', component: () => import('@/portal/views/PortalHomeView.vue'), meta: { title: 'Your jobs', requiresAuth: false, portal: true, portalAuth: true } },
+  { path: '/portal/jobs/:id', name: 'portal-job', component: () => import('@/portal/views/PortalJobView.vue'), meta: { title: 'Job', requiresAuth: false, portal: true, portalAuth: true } },
+  { path: '/portal/account', name: 'portal-account', component: () => import('@/portal/views/PortalAccountView.vue'), meta: { title: 'Your account', requiresAuth: false, portal: true, portalAuth: true } },
+
   // Field engineer (Module 8) — mobile-first views, own layout
   {
     path: '/field/login',
@@ -384,6 +392,15 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   document.title = `${to.meta.title || 'Workshop'} | ${useBrandingStore(pinia).appName}`
+
+  // Sprint 29 — portal pages use the customer session, not the staff one
+  if (to.meta.portal) {
+    if (!to.meta.portalAuth) return true
+    const { usePortalStore } = await import('@/portal/portal.store')
+    const portal = usePortalStore(pinia)
+    if (!portal.initialized) await portal.initialize()
+    return portal.isSignedIn ? true : { name: 'portal-signin' }
+  }
 
   if (to.meta.requiresAuth === false) return true
 

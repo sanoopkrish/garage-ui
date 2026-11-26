@@ -31,7 +31,10 @@ const init = async () => {
     const authStore = useAuthStore(pinia)
     // The wall-tablet kiosk is never logged in — don't try to restore a session there
     // (a failed refresh would bounce the tablet to the login page)
-    if (router.currentRoute.value.name !== 'kiosk') await authStore.initialize()
+    // Sprint 29 — the customer portal has its own session (portal store); the staff bootstrap
+    // would bounce a customer to the staff login when the refresh fails
+    const current = router.currentRoute.value
+    if (current.name !== 'kiosk' && !current.meta.portal) await authStore.initialize()
     else authStore.initialized = true
   } catch (e) {
     console.error('Init failed:', e)

@@ -1,5 +1,6 @@
 import api from '@/api/client'
 import { JobStatus, FuelLevel, KeyStatus, RoadTestStatus, WorkLocation, VisitStatus, NoteSource } from '@/types/generated/enums/job'
+import type { NoteVisibility } from '@/types/generated/enums/portal'
 
 export interface JobCheckin {
   id: string
@@ -412,21 +413,41 @@ export async function startTimer(jobId: string, assignmentId: string): Promise<v
 export interface JobNote {
   id: string
   jobId: string
-  authorId: string
+  authorId: string | null
   authorName: string
   body: string
   source: NoteSource
+  /** Sprint 29 — customer-visible notes are the portal message thread */
+  visibility: NoteVisibility
+  authorContactId: string | null
+  answeredAt: string | null
   createdAt: string
 }
 
-export async function getJobNotes(jobId: string): Promise<JobNote[]> {
-  const response = await api.get(`/jobs/${jobId}/notes`)
-  const data = response.data?.data ?? response.data
-  return data.items ?? []
+export interface JobNotesResponse {
+  items: JobNote[]
+  /** customer messages not yet answered by the office */
+  unanswered: number
 }
 
-export async function addJobNote(jobId: string, body: string): Promise<JobNote> {
-  const response = await api.post(`/jobs/${jobId}/notes`, { body })
+export async function getJobNotesWithMeta(jobId: string): Promise<JobNotesResponse> {
+  const response = await api.get(`/jobs/${jobId}/notes`)
+  const data = response.data?.data ?? response.data
+  return { items: data.items ?? [], unanswered: data.unanswered ?? 0 }
+}
+
+export async function getJobNotes(jobId: string): Promise<JobNote[]> {
+  return (await getJobNotesWithMeta(jobId)).items
+}
+
+export async function addJobNote(jobId: string, body: string, visibility?: NoteVisibility): Promise<JobNote> {
+  const response = await api.post(`/jobs/${jobId}/notes`, visibility ? { body, visibility } : { body })
+  return response.data?.data ?? response.data
+}
+
+/** Sprint 29 — mark a customer message as answered without replying */
+export async function markJobNoteAnswered(jobId: string, noteId: string): Promise<JobNote> {
+  const response = await api.patch(`/jobs/${jobId}/notes/${noteId}/answered`, {})
   return response.data?.data ?? response.data
 }
 

@@ -3,9 +3,10 @@ import { computed, ref, watch, onMounted } from 'vue'
 import DefaultLayout from '@/components/Layout/DefaultLayout.vue'
 import UiButton from '@/components/Ui/UiButton.vue'
 import UiInput from '@/components/Ui/UiInput.vue'
-import { Building2, CreditCard, Bell, Satellite, ShieldCheck, Clock, ShoppingCart, LayoutDashboard, Wrench } from 'lucide-vue-next'
+import { Building2, CreditCard, Bell, Satellite, ShieldCheck, Clock, ShoppingCart, LayoutDashboard, Wrench, Globe } from 'lucide-vue-next'
 import WorkingTimeSettings from '@/components/Settings/WorkingTimeSettings.vue'
 import WorkshopSettings from '@/components/Settings/WorkshopSettings.vue'
+import PortalSettings from '@/components/Settings/PortalSettings.vue'
 import BrandingSettings from '@/components/Settings/BrandingSettings.vue'
 import InvoiceAttachmentsSettings from '@/components/Settings/InvoiceAttachmentsSettings.vue'
 import InvoiceLayoutSettings from '@/components/Settings/InvoiceLayoutSettings.vue'
@@ -34,6 +35,7 @@ const tabs = computed(() => [
   ...(canSeeBusiness.value ? [{ key: 'workshop', label: 'Workshop', icon: Wrench }] : []),
   ...(canSeeBusiness.value ? [{ key: 'working-time', label: 'Working time', icon: Clock }] : []),
   ...(canSeeBusiness.value ? [{ key: 'purchasing', label: 'Purchasing', icon: ShoppingCart }] : []),
+  ...(canSeeBusiness.value ? [{ key: 'portal', label: 'Portal', icon: Globe }] : []), // Sprint 29
   ...(canSeeDashboard.value ? [{ key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }] : []),
   ...(canSeeNotify.value ? [{ key: 'notify', label: 'Notifications', icon: Bell }] : []),
   ...(canSeeIntegrations.value ? [{ key: 'integrations', label: 'Integrations', icon: Satellite }] : []),
@@ -498,6 +500,10 @@ async function saveNotifications() {
 
         <template v-else-if="activeTab === 'purchasing'">
           <ProcurementSettings />
+        </template>
+
+        <template v-else-if="activeTab === 'portal'">
+          <PortalSettings />
         </template>
 
         <template v-else-if="activeTab === 'dashboard'">

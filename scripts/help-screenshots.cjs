@@ -38,7 +38,12 @@ const IDS = {
   invoice: '46810daf-59fb-41a9-a3ac-ae406d25e67c',
   timesheet: 'ac928f06-27f9-4894-b561-cd6c9bf5a31c',
   user: '3fdcc027-a106-4ed8-abdd-70a86efcd6d4',
+  // Sprint 29 — customer portal (seed:portal)
+  customerPortal: '9f4b2472-58ff-4297-81c7-1bfa705d3a46', // James Mitchell — portal contact + message thread
+  jobPortalThread: '8651121e-fe01-4cd1-bfb8-07241b0504c9', // JOB-00009 — customer message + office reply
+  jobSharedPhoto: 'ff211075-6745-481f-8c86-e7c97376a16f', // JOB-00010 — a photo shared with the customer
 }
+const PORTAL_CONTACT_EMAIL = process.env.HELP_PORTAL_EMAIL || 'james.mitchell@example.com'
 // Demo data lives in these weeks; list screens are stepped back to them
 const DEMO_WEEKS_BACK = { schedule: 14, attendance: ['2026-09-24', '2026-09-25'], timesheets: 2, myWeek: 3 }
 
@@ -47,6 +52,40 @@ function loadPuppeteer() {
     try { return require(p) } catch { /* next */ }
   }
   throw new Error('puppeteer not found — install it in garage-api or garage-ui')
+}
+
+/** Sprint 29 — a portal sign-in link without sending an email: insert the hashed token straight into the DB (garage-api .env) */
+async function mintPortalToken(email) {
+  const apiDir = path.resolve(__dirname, '../../garage-api')
+  require(path.join(apiDir, 'node_modules/dotenv')).config({ path: path.join(apiDir, '.env') })
+  const { Client } = require(path.join(apiDir, 'node_modules/pg'))
+  const crypto = require('crypto')
+  const c = new Client({ host: process.env.DB_HOST, port: +(process.env.DB_PORT || 5432), user: process.env.DB_USERNAME || process.env.DB_USER, password: process.env.DB_PASSWORD, database: process.env.DB_DATABASE || process.env.DB_NAME, ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : undefined })
+  await c.connect()
+  const { rows } = await c.query(`SELECT pc.id, pc.company_id FROM portal_contacts pc JOIN companies co ON co.id = pc.company_id WHERE co.subdomain = $1 AND LOWER(pc.email) = LOWER($2) AND pc.deleted_at IS NULL LIMIT 1`, [process.env.HELP_TENANT || 'demo', email])
+  if (!rows.length) { await c.end(); return null }
+  const token = crypto.randomBytes(32).toString('hex')
+  await c.query(`INSERT INTO portal_access_tokens (contact_id, company_id, token_hash, purpose, expires_at) VALUES ($1, $2, $3, 'magic_link', NOW() + interval '15 minutes')`, [rows[0].id, rows[0].company_id, crypto.createHash('sha256').update(token).digest('hex')])
+  await c.end()
+  return token
+}
+/** Element screenshot of the card whose <h2> text matches, grown to fit */
+async function cardShot(page, heading, name, max = 2400) {
+  if (ONLY && !ONLY.has(name)) return
+  const card = await page.evaluateHandle((heading) => {
+    const h2 = Array.from(document.querySelectorAll('main h2')).find((h) => h.textContent.replace(/\s+/g, ' ').trim().startsWith(heading))
+    let n = h2
+    while (n && !n.classList.contains('card')) n = n.parentElement
+    return n || null
+  }, heading)
+  if (!card || !card.asElement()) return log(name, 'MISS')
+  await card.asElement().evaluate((el) => el.scrollIntoView({ block: 'start' }))
+  await sleep(500)
+  const h = await card.asElement().evaluate((el) => Math.ceil(el.getBoundingClientRect().height))
+  await page.setViewport({ width: 1440, height: Math.max(900, Math.min(max, h + 160)) }); await sleep(600)
+  await card.asElement().evaluate((el) => el.scrollIntoView({ block: 'start' })); await sleep(300)
+  await card.asElement().screenshot({ path: path.join(OUT, `${name}.png`) }); log('shot', name)
+  await page.setViewport({ width: 1440, height: 900 })
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -138,6 +177,10 @@ async function removeToasts(page) {
   await go(page, '/inventory'); await shot(page, 'job-parts')
   await go(page, '/customers'); await shot(page, 'customers-list')
   await go(page, `/customers/${IDS.customer}`, 2500); await tall(page, 'customer-detail')
+  // Sprint 29 — customer portal card, message thread and share toggle
+  await go(page, `/customers/${IDS.customerPortal}`, 2500); await cardShot(page, 'Customer portal', 'customers-portal')
+  await go(page, `/jobs/${IDS.jobPortalThread}`, 2800); await cardShot(page, 'Job notes', 'job-customer-messages')
+  await go(page, `/jobs/${IDS.jobSharedPhoto}`, 2800); await cardShot(page, 'Photos & Files', 'job-share-customer')
   await go(page, '/vehicles'); await shot(page, 'vehicles-list')
   await go(page, `/vehicles/${IDS.vehicle}`, 2500); await tall(page, 'vehicle-detail')
   await go(page, '/technicians'); await shot(page, 'technicians-list')
@@ -194,7 +237,7 @@ async function removeToasts(page) {
   }
   const tabs = [
     ['Billing / VAT', 'settings-billing'], ['Workshop', 'settings-workshop'], ['Working time', 'settings-working-time'], ['Purchasing', 'settings-purchasing'],
-    ['Dashboard', 'settings-dashboard'], ['Notifications', 'settings-notifications'], ['Security & Data', 'settings-security'],
+    ['Portal', 'settings-portal'], ['Dashboard', 'settings-dashboard'], ['Notifications', 'settings-notifications'], ['Security & Data', 'settings-security'],
   ]
   for (const [label, name] of tabs) {
     if (await clickText(page, label, 'main nav button')) { await sleep(800); await removeToasts(page); await tall(page, name) }
@@ -282,6 +325,18 @@ async function removeToasts(page) {
   await go(m, '/field/route', 2500); await mshot('field-route') // Sprint 26
   await go(m, '/field/timesheet', 2500); await prevWeek(m, DEMO_WEEKS_BACK.myWeek); await mshot('field-my-week')
   await go(m, '/field/kit', 2500); await mshot('field-find-kit')
+
+  // ---- Customer portal on a phone (Sprint 29) — own browser context, no staff session
+  const pctx = await browser.createBrowserContext()
+  const pp = await pctx.newPage()
+  await pp.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true })
+  const pshot = async (name) => { if (ONLY && !ONLY.has(name)) return; await pp.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: true }); log('shot', name) }
+  await go(pp, '/portal', 1500); await pshot('portal-signin')
+  const ptoken = await mintPortalToken(PORTAL_CONTACT_EMAIL).catch((e) => { log('portal token failed', e.message); return null })
+  if (ptoken) {
+    await go(pp, `/portal/link/${ptoken}`, 3500); await pshot('portal-home')
+    await go(pp, `/portal/jobs/${IDS.jobPortalThread}`, 3000); await pshot('portal-job')
+  } else log('portal-home / portal-job skipped: no portal contact for', PORTAL_CONTACT_EMAIL)
 
   await browser.close()
   log('done ->', OUT)

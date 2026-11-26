@@ -1,6 +1,6 @@
 // Auto-generated from backend constants
 // Source: src/shared/constants/module-configuration.ts
-// Generated at: 2026-11-24T12:06:19.321Z
+// Generated at: 2026-11-24T14:37:23.394Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 
@@ -26,7 +26,7 @@ export type ModuleKey = typeof CONFIGURABLE_MODULE_KEYS[number];
 export const MODULE_SUBMODULES: Record<ModuleKey, readonly string[]> = {
   dashboard: [],
   workshop:  ['jobs', 'schedule', 'assignments'],
-  crm:       ['customers', 'vehicles'],
+  crm:       ['customers', 'vehicles', 'portal'],
   team:      ['technicians'],
   stock:     ['inventory'],
   finance:   ['invoices', 'statements', 'supplierInvoices', 'creditNotes', 'procurement', 'suppliers', 'priceList'],

@@ -1,5 +1,5 @@
 // Auto-generated barrel export
-// Generated at: 2026-11-24T12:06:19.321Z
+// Generated at: 2026-11-24T14:37:23.395Z
 // DO NOT EDIT MANUALLY
 
 // ==================== ENUMS ====================
@@ -8,6 +8,7 @@ export * from './enums/user-role';
 export * from './enums/status';
 export * from './enums/quote';
 export * from './enums/procurement';
+export * from './enums/portal';
 export * from './enums/numbering-module';
 export * from './enums/notification';
 export * from './enums/master-data';

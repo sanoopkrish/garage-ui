@@ -1,6 +1,6 @@
 // Auto-generated from backend constants
 // Source: src/shared/constants/module-configuration.ts
-// Generated at: 2026-11-20T14:35:16.017Z
+// Generated at: 2026-11-24T12:06:19.321Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 
@@ -93,6 +93,27 @@ export function isValidModuleKey(key: string): key is ModuleKey {
  */
 export function isValidSubmoduleKey(moduleKey: ModuleKey, submoduleKey: string): boolean {
   return MODULE_SUBMODULES[moduleKey]?.includes(submoduleKey) ?? false;
+}
+
+/**
+ * Is the module (and submodule) behind a permission path switched on for a company?
+ *
+ * This is the owner's master control and it outranks everything, including a role's
+ * "admin override". It mirrors PermissionFilterService.filterByEnabledModules:
+ *  - paths outside the configurable modules (e.g. menus.administration.*) are always on
+ *  - a company with no module configuration has nothing switched off
+ *  - a module that is missing from the configuration, or not enabled, is off
+ *  - menus.<module>.<submodule>.<action>: when the module lists submodules they are opt-in
+ */
+export function isPermissionPathEnabled(path: string, enabledModules?: EnabledModules | null): boolean {
+  const [root, moduleKey, third, ...rest] = (path ?? '').split('.');
+  if (root !== 'menus' || !moduleKey || !isValidModuleKey(moduleKey)) return true;
+  if (!enabledModules) return true;
+
+  const config = enabledModules[moduleKey];
+  if (!config || !config.enabled) return false;
+  if (rest.length > 0 && config.submodules) return config.submodules[third] === true;
+  return true;
 }
 
 /**

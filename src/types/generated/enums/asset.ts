@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/asset.enum.ts
-// Generated at: 2026-11-24T12:06:19.321Z
+// Generated at: 2026-11-24T14:37:23.393Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum AssetCategory {

@@ -16,6 +16,14 @@ export interface Attachment {
   entityType: string
   entityId: string
   createdAt: string
+  /** Sprint 29 — shown to the customer in the portal */
+  customerVisible?: boolean
+}
+
+/** Sprint 29 — "Share with customer" switch (needs menus.crm.portal.update) */
+export async function setAttachmentShared(id: string, customerVisible: boolean): Promise<Attachment> {
+  const response = await api.patch(`/attachments/${id}`, { customerVisible })
+  return response.data?.data ?? response.data
 }
 
 export async function uploadTemporary(file: File): Promise<string> {

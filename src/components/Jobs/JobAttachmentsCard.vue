@@ -1,18 +1,34 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { Camera, FileUp, FileText, Loader2, Trash2, ExternalLink, Paperclip } from 'lucide-vue-next'
+import { Camera, FileUp, FileText, Loader2, Trash2, ExternalLink, Paperclip, Eye, EyeOff } from 'lucide-vue-next'
 import {
-  uploadTemporary, attachToEntity, listAttachments, getViewUrl, deleteAttachment,
+  uploadTemporary, attachToEntity, listAttachments, getViewUrl, deleteAttachment, setAttachmentShared,
   type Attachment,
 } from '@/api/files.api'
 import { AttachmentCategory } from '@/types/generated/enums/attachment'
-import { useCrudPermissions } from '@/composables/usePermissions'
+import { useCrudPermissions, usePermissions } from '@/composables/usePermissions'
 import { ToastService } from '@/services/toast.service'
 import { showConfirmDialog } from '@/utils/alert'
 
 const props = defineProps<{ jobId: string }>()
 
 const { canUpdate } = useCrudPermissions('workshop', 'jobs')
+// Sprint 29 — "Share with customer" (portal) needs the Customer portal permission
+const { hasPermission: canShare } = usePermissions('menus.crm.portal.update')
+const sharingId = ref<string | null>(null)
+
+async function toggleShare(a: Attachment) {
+  sharingId.value = a.id
+  try {
+    const updated = await setAttachmentShared(a.id, !a.customerVisible)
+    attachments.value = attachments.value.map((x) => (x.id === a.id ? { ...x, customerVisible: updated.customerVisible } : x))
+    ToastService.success(updated.customerVisible ? `${a.fileName} is now visible to the customer` : `${a.fileName} hidden from the customer`)
+  } catch (e: any) {
+    ToastService.error(e.response?.data?.message ?? 'Could not change sharing')
+  } finally {
+    sharingId.value = null
+  }
+}
 
 const attachments = ref<Attachment[]>([])
 const photoUrls = ref<Record<string, string>>({})
@@ -187,6 +203,20 @@ watch(() => props.jobId, load)
           <span class="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/50 text-white text-[10px] leading-tight">
             {{ categoryLabels[p.category] ?? p.category }}
           </span>
+          <span v-if="p.customerVisible" class="absolute top-1 left-1 p-1 rounded-full bg-emerald-600/90 text-white" title="Visible to the customer in the portal"><Eye class="w-3 h-3" /></span>
+          <button
+            v-if="canShare"
+            type="button"
+            :disabled="sharingId === p.id"
+            @click.stop.prevent="toggleShare(p)"
+            :class="['absolute bottom-1 right-1 p-1.5 rounded-full text-white transition-all', p.customerVisible ? 'bg-emerald-600/90 hover:bg-emerald-700' : 'bg-black/50 opacity-0 group-hover:opacity-100 hover:!bg-emerald-600']"
+            :aria-label="p.customerVisible ? 'Hide from customer' : 'Share with customer'"
+            :title="p.customerVisible ? 'Shared with customer — click to hide' : 'Share with customer'"
+          >
+            <Loader2 v-if="sharingId === p.id" class="w-3 h-3 animate-spin" />
+            <Eye v-else-if="p.customerVisible" class="w-3 h-3" />
+            <EyeOff v-else class="w-3 h-3" />
+          </button>
           <button
             v-if="canUpdate"
             type="button"
@@ -216,6 +246,18 @@ watch(() => props.jobId, load)
             {{ categoryLabels[doc.category] ?? doc.category }}
           </span>
           <span class="text-xs text-slate-400 ml-auto flex-shrink-0">{{ formatSize(doc.fileSize) }} · {{ formatDate(doc.createdAt) }}</span>
+          <span v-if="doc.customerVisible" class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 flex-shrink-0 inline-flex items-center gap-1"><Eye class="w-3 h-3" /> Shared</span>
+          <button
+            v-if="canShare"
+            :class="['p-1 flex-shrink-0', doc.customerVisible ? 'text-emerald-600 hover:text-slate-500' : 'text-slate-400 hover:text-emerald-600']"
+            :disabled="sharingId === doc.id"
+            :title="doc.customerVisible ? 'Hide from customer' : 'Share with customer'"
+            @click="toggleShare(doc)"
+          >
+            <Loader2 v-if="sharingId === doc.id" class="w-3.5 h-3.5 animate-spin" />
+            <Eye v-else-if="doc.customerVisible" class="w-3.5 h-3.5" />
+            <EyeOff v-else class="w-3.5 h-3.5" />
+          </button>
           <button class="p-1 text-slate-400 hover:text-brand-500 flex-shrink-0" title="Open" @click="openDocument(doc)">
             <ExternalLink class="w-3.5 h-3.5" />
           </button>

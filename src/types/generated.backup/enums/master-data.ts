@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/master-data.enum.ts
-// Generated at: 2026-11-20T14:35:16.011Z
+// Generated at: 2026-11-24T12:06:19.318Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum Timeframe {

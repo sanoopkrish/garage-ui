@@ -1,6 +1,6 @@
 // Auto-generated from backend enums
 // Source: src/shared/enums/job.enum.ts
-// Generated at: 2026-11-24T12:06:19.319Z
+// Generated at: 2026-11-24T14:37:23.389Z
 // DO NOT EDIT MANUALLY - This file is auto-generated
 
 export enum JobStatus {
@@ -194,11 +194,13 @@ export const VisitStatusValues = Object.values(VisitStatus);
 export enum NoteSource {
   FIELD = 'field',
   OFFICE = 'office',
+  PORTAL = 'portal',
 }
 
 export const NoteSourceLabels: Record<NoteSource, string> = {
   [NoteSource.FIELD]: 'field',
   [NoteSource.OFFICE]: 'office',
+  [NoteSource.PORTAL]: 'portal',
 };
 
 export const NoteSourceValues = Object.values(NoteSource);

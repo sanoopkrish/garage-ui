@@ -123,6 +123,45 @@ export const DEFAULT_STATUS_AUTOMATION: StatusAutomationSettings = {
   manualHoldMinutes: 10,
 }
 
+/** Sprint 29 — customer portal (per tenant). Resolved by the API; defaults mirror portal-settings.util.ts */
+export interface PortalFeatureFlags {
+  jobStatus: boolean
+  documents: boolean
+  messages: boolean
+  quotes: boolean
+  invoices: boolean
+  booking: boolean
+}
+
+export interface PortalSettings {
+  enabled: boolean
+  features: PortalFeatureFlags
+  welcomeText: string
+  linkChannel: 'auto' | 'email' | 'sms'
+  autoShareCategories: string[]
+  quoteApproverRoles: string[]
+  statusWording: Record<string, string>
+  sessionDays: number
+  messageWindowDays: number
+}
+
+export const DEFAULT_PORTAL_SETTINGS: PortalSettings = {
+  enabled: false,
+  features: { jobStatus: true, documents: true, messages: true, quotes: false, invoices: false, booking: false },
+  welcomeText: '',
+  linkChannel: 'auto',
+  autoShareCategories: ['certificate', 'diagnostic_report'],
+  quoteApproverRoles: ['primary', 'billing'],
+  statusWording: {
+    enquiry: 'Enquiry received', booked: 'Booked in', checked_in: 'Vehicle with us', diagnosis: 'Being inspected',
+    quoted: 'Quote ready for your approval', awaiting_authorisation: 'Quote ready for your approval', approved: 'Work approved',
+    parts_ordered: 'Waiting for parts', in_repair: 'Work in progress', quality_check: 'Final checks',
+    complete: 'Ready for collection', collected: 'Collected', cancelled: 'Cancelled',
+  },
+  sessionDays: 30,
+  messageWindowDays: 30,
+}
+
 export interface CompanySettings {
   timezone?: string
   dateFormat?: string
@@ -151,6 +190,8 @@ export interface CompanySettings {
   invoiceTerms?: string
   /** Sprint 27 — planner hours for a job with no approved quoted labour (default 4) */
   defaultJobHours?: number
+  /** Sprint 29 — customer portal switches, wording and sharing defaults (partial on save, resolved on read) */
+  portal?: Partial<PortalSettings> & { features?: Partial<PortalFeatureFlags> }
   passwordMinLength?: number
   passwordRequireMixed?: boolean
   idleTimeoutMinutes?: number

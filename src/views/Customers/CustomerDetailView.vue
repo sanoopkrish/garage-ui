@@ -9,6 +9,7 @@ import { getCreditNotesForCustomer, type CreditNote } from '@/api/credit-notes.a
 import { creditNoteReasonLabels, creditNoteStatusLabels, creditNoteStatusVariant } from '@/utils/creditNoteStatus'
 import { gbp } from '@/utils/invoiceStatus'
 import CustomerPricesCard from '@/components/PriceList/CustomerPricesCard.vue'
+import PortalContactsCard from '@/components/Customers/PortalContactsCard.vue'
 import { usePermissions } from '@/composables/usePermissions'
 import { useCustomersStore } from '@/stores/customers.store'
 import { gdprExportCustomer, gdprEraseCustomer } from '@/api/customers.api'
@@ -223,6 +224,9 @@ onMounted(async () => {
             </router-link>
           </div>
         </div>
+
+        <!-- Sprint 29 — who can sign in to the customer portal for this customer -->
+        <PortalContactsCard v-if="customer" :customer-id="customer.id" :customer-type="customer.type" />
 
         <!-- Data protection (GDPR, proposal §6) -->
         <div v-if="canDelete" class="card">
